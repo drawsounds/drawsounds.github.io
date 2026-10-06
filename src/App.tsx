@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bomb, Eraser, PaintBucket, Pause, Pencil, Play, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Bomb, Eraser, PaintBucket, Pause, Pencil, Play, RotateCcw, Sparkles, Stamp, X } from 'lucide-react';
 import { transport } from './audio/engine';
 import { TransportState } from './audio/types';
 import {
@@ -21,7 +21,7 @@ import {
 } from './music/canvasMusic';
 import type { Performer } from './music/canvasTypes';
 
-function initialTransport(): TransportState { return {isPlaying:false,isPreparing:false,isAudioReady:false,currentTime:0,totalDuration:0}; }
+function initialTransport(): TransportState { return {isPlaying:false,isPreparing:false,currentTime:0,totalDuration:0}; }
 
 const TOOLS: {id:CanvasTool; label:string}[] = [
   {id:'crayon',label:'Crayon'},
@@ -48,75 +48,126 @@ function pathFrom(points:CanvasPoint[],dx=0,dy=0){
 }
 function starPoints(cx:number,cy:number,r:number,n=5){const pts:string[]=[];for(let i=0;i<n*2;i++){const a=-Math.PI/2+i*Math.PI/n,rr=i%2===0?r:r*.43;pts.push(`${cx+Math.cos(a)*rr},${cy+Math.sin(a)*rr}`);}return pts.join(' ');}
 
-function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;r:number;color:string;ink:string}){
+function CuteStamp({kind,cx,cy,r,color,ink,monochrome=false}:{kind:StampKind;cx:number;cy:number;r:number;color:string;ink:string;monochrome?:boolean}){
+  const c = monochrome ? 'currentColor' : color;
+  const i = monochrome ? 'currentColor' : ink;
+  const fillBase = monochrome ? 'none' : color;
+  const strokeWidth = monochrome ? Math.max(1.8, r * 0.08) : Math.max(1.8, r * 0.05);
+
   if(kind==='cat'){
     return <g>
-      <path d={`M ${cx-r*.62} ${cy-r*.26} L ${cx-r*.58} ${cy-r*.94} L ${cx-r*.16} ${cy-r*.58} Q ${cx} ${cy-r*.68} ${cx+r*.16} ${cy-r*.58} L ${cx+r*.58} ${cy-r*.94} L ${cx+r*.62} ${cy-r*.26} Q ${cx+r*.74} ${cy+r*.66} ${cx} ${cy+r*.72} Q ${cx-r*.74} ${cy+r*.66} ${cx-r*.62} ${cy-r*.26} Z`} fill={color}/>
-      <polygon points={`${cx-r*.46},${cy-r*.36} ${cx-r*.46},${cy-r*.76} ${cx-r*.22},${cy-r*.52}`} fill={ink} opacity=".25"/>
-      <polygon points={`${cx+r*.46},${cy-r*.36} ${cx+r*.46},${cy-r*.76} ${cx+r*.22},${cy-r*.52}`} fill={ink} opacity=".25"/>
-      <circle cx={cx-r*.38} cy={cy+r*.22} r={r*.13} fill={ink} opacity=".15"/>
-      <circle cx={cx+r*.38} cy={cy+r*.22} r={r*.13} fill={ink} opacity=".15"/>
-      <circle cx={cx-r*.24} cy={cy-r*.06} r={r*.085} fill={ink}/>
-      <circle cx={cx-r*.21} cy={cy-r*.09} r={r*.03} fill={color}/>
-      <circle cx={cx+r*.24} cy={cy-r*.06} r={r*.085} fill={ink}/>
-      <circle cx={cx+r*.27} cy={cy-r*.09} r={r*.03} fill={color}/>
-      <polygon points={`${cx-r*.07},${cy+r*.10} ${cx+r*.07},${cy+r*.10} ${cx},${cy+r*.18}`} fill={ink}/>
-      <path d={`M ${cx-r*.14} ${cy+r*.25} Q ${cx-r*.07} ${cy+r*.34} ${cx} ${cy+r*.24} Q ${cx+r*.07} ${cy+r*.34} ${cx+r*.14} ${cy+r*.25}`} fill="none" stroke={ink} strokeWidth={Math.max(1.8,r*.05)} strokeLinecap="round"/>
+      <path d={`M ${cx-r*.62} ${cy-r*.26} L ${cx-r*.58} ${cy-r*.94} L ${cx-r*.16} ${cy-r*.58} Q ${cx} ${cy-r*.68} ${cx+r*.16} ${cy-r*.58} L ${cx+r*.58} ${cy-r*.94} L ${cx+r*.62} ${cy-r*.26} Q ${cx+r*.74} ${cy+r*.66} ${cx} ${cy+r*.72} Q ${cx-r*.74} ${cy+r*.66} ${cx-r*.62} ${cy-r*.26} Z`} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/>
+      <polygon points={`${cx-r*.46},${cy-r*.36} ${cx-r*.46},${cy-r*.76} ${cx-r*.22},${cy-r*.52}`} fill={i} opacity=".25"/>
+      <polygon points={`${cx+r*.46},${cy-r*.36} ${cx+r*.46},${cy-r*.76} ${cx+r*.22},${cy-r*.52}`} fill={i} opacity=".25"/>
+      <circle cx={cx-r*.38} cy={cy+r*.22} r={r*.13} fill={i} opacity=".15"/>
+      <circle cx={cx+r*.38} cy={cy+r*.22} r={r*.13} fill={i} opacity=".15"/>
+      <circle cx={cx-r*.24} cy={cy-r*.06} r={r*.085} fill={i}/>
+      <circle cx={cx-r*.21} cy={cy-r*.09} r={r*.03} fill={monochrome?'var(--canvas,#fff)':c}/>
+      <circle cx={cx+r*.24} cy={cy-r*.06} r={r*.085} fill={i}/>
+      <circle cx={cx+r*.27} cy={cy-r*.09} r={r*.03} fill={monochrome?'var(--canvas,#fff)':c}/>
+      <polygon points={`${cx-r*.07},${cy+r*.10} ${cx+r*.07},${cy+r*.10} ${cx},${cy+r*.18}`} fill={i}/>
+      <path d={`M ${cx-r*.14} ${cy+r*.25} Q ${cx-r*.07} ${cy+r*.34} ${cx} ${cy+r*.24} Q ${cx+r*.07} ${cy+r*.34} ${cx+r*.14} ${cy+r*.25}`} fill="none" stroke={i} strokeWidth={strokeWidth} strokeLinecap="round"/>
       {[-1,1].map(side=><g key={side}>
-        <path d={`M ${cx+side*r*.20} ${cy+r*.15} L ${cx+side*r*.72} ${cy+r*.08}`} stroke={ink} strokeWidth={Math.max(1.5,r*.035)} strokeLinecap="round"/>
-        <path d={`M ${cx+side*r*.20} ${cy+r*.24} L ${cx+side*r*.74} ${cy+r*.26}`} stroke={ink} strokeWidth={Math.max(1.5,r*.035)} strokeLinecap="round"/>
+        <path d={`M ${cx+side*r*.20} ${cy+r*.15} L ${cx+side*r*.72} ${cy+r*.08}`} stroke={i} strokeWidth={Math.max(1.5,r*.035)} strokeLinecap="round"/>
+        <path d={`M ${cx+side*r*.20} ${cy+r*.24} L ${cx+side*r*.74} ${cy+r*.26}`} stroke={i} strokeWidth={Math.max(1.5,r*.035)} strokeLinecap="round"/>
       </g>)}
     </g>;
   }
   if(kind==='frog'){
     return <g>
-      <circle cx={cx-r*.40} cy={cy-r*.28} r={r*.30} fill={color}/>
-      <circle cx={cx+r*.40} cy={cy-r*.28} r={r*.30} fill={color}/>
-      <ellipse cx={cx} cy={cy+r*.18} rx={r*.75} ry={r*.54} fill={color}/>
-      <circle cx={cx-r*.40} cy={cy-r*.28} r={r*.14} fill={ink}/>
-      <circle cx={cx-r*.36} cy={cy-r*.32} r={r*.05} fill={color}/>
-      <circle cx={cx+r*.40} cy={cy-r*.28} r={r*.14} fill={ink}/>
-      <circle cx={cx+r*.44} cy={cy-r*.32} r={r*.05} fill={color}/>
-      <circle cx={cx-r*.07} cy={cy+r*.08} r={r*.025} fill={ink} opacity=".6"/>
-      <circle cx={cx+r*.07} cy={cy+r*.08} r={r*.025} fill={ink} opacity=".6"/>
-      <path d={`M ${cx-r*.44} ${cy+r*.18} Q ${cx} ${cy+r*.55} ${cx+r*.44} ${cy+r*.18}`} fill="none" stroke={ink} strokeWidth={Math.max(2.2,r*.065)} strokeLinecap="round"/>
-      <ellipse cx={cx-r*.46} cy={cy+r*.28} rx={r*.12} ry={r*.08} fill={ink} opacity=".22"/>
-      <ellipse cx={cx+r*.46} cy={cy+r*.28} rx={r*.12} ry={r*.08} fill={ink} opacity=".22"/>
+      <circle cx={cx-r*.40} cy={cy-r*.28} r={r*.30} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/>
+      <circle cx={cx+r*.40} cy={cy-r*.28} r={r*.30} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/>
+      <ellipse cx={cx} cy={cy+r*.18} rx={r*.75} ry={r*.54} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/>
+      <circle cx={cx-r*.40} cy={cy-r*.28} r={r*.14} fill={i}/>
+      <circle cx={cx-r*.36} cy={cy-r*.32} r={r*.05} fill={monochrome?'var(--canvas,#fff)':c}/>
+      <circle cx={cx+r*.40} cy={cy-r*.28} r={r*.14} fill={i}/>
+      <circle cx={cx+r*.44} cy={cy-r*.32} r={r*.05} fill={monochrome?'var(--canvas,#fff)':c}/>
+      <circle cx={cx-r*.07} cy={cy+r*.08} r={r*.025} fill={i} opacity=".6"/>
+      <circle cx={cx+r*.07} cy={cy+r*.08} r={r*.025} fill={i} opacity=".6"/>
+      <path d={`M ${cx-r*.44} ${cy+r*.18} Q ${cx} ${cy+r*.55} ${cx+r*.44} ${cy+r*.18}`} fill="none" stroke={i} strokeWidth={Math.max(2.2,r*.065)} strokeLinecap="round"/>
+      <ellipse cx={cx-r*.46} cy={cy+r*.28} rx={r*.12} ry={r*.08} fill={i} opacity=".22"/>
+      <ellipse cx={cx+r*.46} cy={cy+r*.28} rx={r*.12} ry={r*.08} fill={i} opacity=".22"/>
     </g>;
   }
-  if(kind==='penguin'){
+  if(kind==='panda'){
     return <g>
-      <ellipse cx={cx} cy={cy+r*.1} rx={r*.65} ry={r*.68} fill={color}/>
-      <path d={`M ${cx} ${cy-r*.22} Q ${cx-r*.35} ${cy-r*.20} ${cx-r*.44} ${cy+r*.18} Q ${cx-r*.36} ${cy+r*.62} ${cx} ${cy+r*.66} Q ${cx+r*.36} ${cy+r*.62} ${cx+r*.44} ${cy+r*.18} Q ${cx+r*.35} ${cy-r*.20} ${cx} ${cy-r*.22} Z`} fill={ink} opacity=".16"/>
-      <circle cx={cx-r*.22} cy={cy+r*.04} r={r*.08} fill={ink}/>
-      <circle cx={cx-r*.19} cy={cy+r*.01} r={r*.03} fill={color}/>
-      <circle cx={cx+r*.22} cy={cy+r*.04} r={r*.08} fill={ink}/>
-      <circle cx={cx+r*.25} cy={cy+r*.01} r={r*.03} fill={color}/>
-      <polygon points={`${cx-r*.11},${cy+r*.18} ${cx+r*.11},${cy+r*.18} ${cx},${cy+r*.34}`} fill={ink}/>
-      <circle cx={cx-r*.34} cy={cy+r*.24} r={r*.11} fill={ink} opacity=".22"/>
-      <circle cx={cx+r*.34} cy={cy+r*.24} r={r*.11} fill={ink} opacity=".22"/>
+      <circle cx={cx-r*.48} cy={cy-r*.52} r={r*.25} fill={i}/>
+      <circle cx={cx+r*.48} cy={cy-r*.52} r={r*.25} fill={i}/>
+      <ellipse cx={cx} cy={cy} rx={r*.72} ry={r*.70} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/>
+      <ellipse cx={cx-r*.28} cy={cy-r*.12} rx={r*.20} ry={r*.27} transform={`rotate(24 ${cx-r*.28} ${cy-r*.12})`} fill={i} opacity=".82"/>
+      <ellipse cx={cx+r*.28} cy={cy-r*.12} rx={r*.20} ry={r*.27} transform={`rotate(-24 ${cx+r*.28} ${cy-r*.12})`} fill={i} opacity=".82"/>
+      <circle cx={cx-r*.25} cy={cy-r*.12} r={r*.055} fill={monochrome?'var(--canvas,#fff)':c}/>
+      <circle cx={cx+r*.25} cy={cy-r*.12} r={r*.055} fill={monochrome?'var(--canvas,#fff)':c}/>
+      <ellipse cx={cx} cy={cy+r*.14} rx={r*.12} ry={r*.09} fill={i}/>
+      <path d={`M ${cx-r*.13} ${cy+r*.27} Q ${cx} ${cy+r*.38} ${cx+r*.13} ${cy+r*.27}`} fill="none" stroke={i} strokeWidth={Math.max(2,r*.055)} strokeLinecap="round"/>
+      <circle cx={cx-r*.43} cy={cy+r*.26} r={r*.10} fill={i} opacity=".14"/>
+      <circle cx={cx+r*.43} cy={cy+r*.26} r={r*.10} fill={i} opacity=".14"/>
     </g>;
   }
-  if(kind==='star') return <g><polygon points={starPoints(cx,cy,r,5)} fill={color}/><circle cx={cx-r*.22} cy={cy-r*.05} r={r*.07} fill={ink}/><circle cx={cx+r*.22} cy={cy-r*.05} r={r*.07} fill={ink}/><path d={`M ${cx-r*.2} ${cy+r*.18} Q ${cx} ${cy+r*.35} ${cx+r*.2} ${cy+r*.18}`} fill="none" stroke={ink} strokeWidth={Math.max(2,r*.06)} strokeLinecap="round"/></g>;
-  if(kind==='rocket') return <g transform={`translate(${cx} ${cy}) rotate(12)`}><path d={`M 0 ${-r} Q ${r*.58} ${-r*.18} ${r*.35} ${r*.62} L 0 ${r*.42} L ${-r*.35} ${r*.62} Q ${-r*.58} ${-r*.18} 0 ${-r}`} fill={color}/><circle cy={-r*.2} r={r*.2} fill={ink} opacity=".18"/><path d={`M ${-r*.2} ${r*.48} L 0 ${r*1.06} L ${r*.2} ${r*.48}`} fill={ink} opacity=".45"/></g>;
-  if(kind==='flower') return <g>{Array.from({length:7},(_,i)=>{const a=i*Math.PI*2/7;return <ellipse key={i} cx={cx+Math.cos(a)*r*.45} cy={cy+Math.sin(a)*r*.45} rx={r*.28} ry={r*.42} transform={`rotate(${a*180/Math.PI+90} ${cx+Math.cos(a)*r*.45} ${cy+Math.sin(a)*r*.45})`} fill={color}/>})}<circle cx={cx} cy={cy} r={r*.3} fill={ink} opacity=".25"/><circle cx={cx} cy={cy} r={r*.14} fill={color}/></g>;
-  if(kind==='lightning') return <g transform={`translate(${cx} ${cy}) rotate(8)`}><path d={`M ${r*.12} ${-r} L ${-r*.56} ${r*.03} L ${-r*.08} ${r*.03} L ${-r*.32} ${r} L ${r*.62} ${-r*.18} L ${r*.1} ${-r*.18} Z`} fill={color}/><path d={`M ${r*.05} ${-r*.75} L ${-r*.28} ${-r*.06}`} stroke={ink} strokeWidth={Math.max(2,r*.06)} opacity=".28"/></g>;
+  if(kind==='star') return <g><polygon points={starPoints(cx,cy,r,5)} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/><circle cx={cx-r*.22} cy={cy-r*.05} r={r*.07} fill={i}/><circle cx={cx+r*.22} cy={cy-r*.05} r={r*.07} fill={i}/><path d={`M ${cx-r*.2} ${cy+r*.18} Q ${cx} ${cy+r*.35} ${cx+r*.2} ${cy+r*.18}`} fill="none" stroke={i} strokeWidth={Math.max(2,r*.06)} strokeLinecap="round"/></g>;
+  if(kind==='rocket') return <g transform={`translate(${cx} ${cy}) rotate(12)`}><path d={`M 0 ${-r} Q ${r*.58} ${-r*.18} ${r*.35} ${r*.62} L 0 ${r*.42} L ${-r*.35} ${r*.62} Q ${-r*.58} ${-r*.18} 0 ${-r}`} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/><circle cy={-r*.2} r={r*.2} fill={monochrome?'none':i} stroke={monochrome?i:'none'} strokeWidth={strokeWidth} opacity={monochrome?1:.18}/><path d={`M ${-r*.2} ${r*.48} L 0 ${r*1.06} L ${r*.2} ${r*.48}`} stroke={i} strokeWidth={monochrome?strokeWidth:1} fill={i} opacity={monochrome?1:.45}/></g>;
+  if(kind==='flower') return <g>{Array.from({length:7},(_,idx)=>{const a=idx*Math.PI*2/7;return <ellipse key={idx} cx={cx+Math.cos(a)*r*.45} cy={cy+Math.sin(a)*r*.45} rx={r*.28} ry={r*.42} transform={`rotate(${a*180/Math.PI+90} ${cx+Math.cos(a)*r*.45} ${cy+Math.sin(a)*r*.45})`} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/>})}<circle cx={cx} cy={cy} r={r*.3} fill={i} opacity=".25"/><circle cx={cx} cy={cy} r={r*.14} fill={monochrome?'var(--canvas,#fff)':c}/></g>;
+  if(kind==='lightning') return <g transform={`translate(${cx} ${cy}) rotate(8)`}><path d={`M ${r*.12} ${-r} L ${-r*.56} ${r*.03} L ${-r*.08} ${r*.03} L ${-r*.32} ${r} L ${r*.62} ${-r*.18} L ${r*.1} ${-r*.18} Z`} fill={fillBase} stroke={monochrome?i:'none'} strokeWidth={strokeWidth}/><path d={`M ${r*.05} ${-r*.75} L ${-r*.28} ${-r*.06}`} stroke={i} strokeWidth={Math.max(2,r*.06)} opacity=".28"/></g>;
   return null;
 }
 
-function StampCardPreview({kind,color}:{kind:StampKind;color:string}){
-  return (
-    <svg viewBox="0 0 60 60" width="46" height="46" className="stamp-preview-svg" aria-hidden="true">
-      <CuteStamp
-        kind={kind}
-        cx={30}
-        cy={30}
-        r={22}
-        color={color}
-        ink={'var(--ink)'}
-      />
-    </svg>
-  );
+function StampToolbarIcon({kind,size=21}:{kind:StampKind;size?:number}){
+  if(kind==='cat'){
+    return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 5c-4 0-7 2.5-7 6 0 4.5 3 7 7 7s7-2.5 7-7c0-3.5-3-6-7-6Z"/>
+      <path d="m5.5 8-2.5-4 4.5 1.5"/>
+      <path d="m18.5 8 2.5-4-4.5 1.5"/>
+      <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <path d="M10 15c.6.5 1.4.8 2 .8s1.4-.3 2-.8"/>
+    </svg>;
+  }
+  if(kind==='frog'){
+    return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="7" cy="8" r="3"/>
+      <circle cx="17" cy="8" r="3"/>
+      <circle cx="7" cy="8" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="17" cy="8" r="1" fill="currentColor" stroke="none"/>
+      <path d="M4 14c0 4 3.6 7 8 7s8-3 8-7-3.6-5-8-5-8 1-8 5Z"/>
+      <path d="M8 16c1.2 1.2 2.6 1.8 4 1.8s2.8-.6 4-1.8"/>
+    </svg>;
+  }
+  if(kind==='panda'){
+    return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="5" cy="6" r="2.5"/>
+      <circle cx="19" cy="6" r="2.5"/>
+      <circle cx="12" cy="13" r="8"/>
+      <ellipse cx="8.5" cy="12" rx="1.8" ry="2.2"/>
+      <ellipse cx="15.5" cy="12" rx="1.8" ry="2.2"/>
+      <circle cx="8.5" cy="12" r=".8" fill="currentColor" stroke="none"/>
+      <circle cx="15.5" cy="12" r=".8" fill="currentColor" stroke="none"/>
+      <path d="M11 16h2"/>
+    </svg>;
+  }
+  if(kind==='star'){
+    return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>;
+  }
+  if(kind==='rocket'){
+    return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+      <circle cx="15" cy="9" r="1.5"/>
+    </svg>;
+  }
+  if(kind==='flower'){
+    return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 16.5A3.5 3.5 0 0 0 8.5 20a3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0-3.5-3.5Z"/>
+      <path d="M12 7.5A3.5 3.5 0 0 0 15.5 4a3.5 3.5 0 0 0-7 0 3.5 3.5 0 0 0 3.5 3.5Z"/>
+      <path d="M7.5 12A3.5 3.5 0 0 0 4 15.5a3.5 3.5 0 0 0 0-7A3.5 3.5 0 0 0 7.5 12Z"/>
+      <path d="M16.5 12A3.5 3.5 0 0 0 20 8.5a3.5 3.5 0 0 0 0 7 3.5 3.5 0 0 0-3.5-3.5Z"/>
+    </svg>;
+  }
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+  </svg>;
 }
 
 const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;color:string;ink:string}){
@@ -127,7 +178,7 @@ const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;colo
       const fillMaskId=`fill_${mark.id.replace(/[^a-zA-Z0-9_]/g,'_')}`;
       const b=mark.bounds??{minX:0,maxX:1,minY:0,maxY:1},x=b.minX*1000,y=b.minY*700,w=(b.maxX-b.minX)*1000,h=(b.maxY-b.minY)*700;
       return <g className={cls}>
-        <defs><mask id={fillMaskId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" maskType="alpha" x="0" y="0" width="1000" height="700">
+        <defs><mask id={fillMaskId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" style={{maskType:'alpha'}} x="0" y="0" width="1000" height="700">
           <image href={mark.fillMaskDataUrl} x={x} y={y} width={w} height={h} preserveAspectRatio="none" pointerEvents="none" style={{imageRendering:'pixelated'}}/>
         </mask></defs>
         <rect width="1000" height="700" fill={color} mask={`url(#${fillMaskId})`}/>
@@ -190,7 +241,7 @@ function FxArt({fx}:{fx:CanvasFx}){
     const kind=fx.stampKind||'cat';
     if(kind==='cat')return <g className="canvas-fx fx-stamp fx-cat"><circle cx={cx-35} cy={cy+28} r="8" fill={fx.color}/><circle cx={cx-8} cy={cy+40} r="6" fill={fx.color}/><path d={`M ${cx-76} ${cy-8} Q ${cx} ${cy-34} ${cx+76} ${cy-8}`} fill="none" stroke={fx.color} strokeWidth="3" strokeDasharray="9 10"/><path d={`M ${cx-68} ${cy+8} Q ${cx} ${cy+32} ${cx+68} ${cy+8}`} fill="none" stroke={fx.color} strokeWidth="3" strokeDasharray="9 10"/></g>;
     if(kind==='frog')return <g className="canvas-fx fx-stamp fx-frog">{[28,48,70].map((r,i)=><ellipse key={r} cx={cx} cy={cy+i*3} rx={r} ry={r*.55} fill="none" stroke={fx.color} strokeWidth={4-i} opacity={.65-i*.14}/>)}</g>;
-    if(kind==='penguin')return <g className="canvas-fx fx-stamp fx-penguin">{Array.from({length:6},(_,i)=>{const a=i*Math.PI/3;return <g key={i} transform={`translate(${cx} ${cy}) rotate(${a*180/Math.PI})`}><path d="M 0 0 L 0 45 M -8 30 L 0 38 L 8 30" stroke={fx.color} strokeWidth="2.5" strokeLinecap="round"/></g>;})}</g>;
+    if(kind==='panda')return <g className="canvas-fx fx-stamp fx-panda">{[-1,1].map(side=><g key={side}><circle cx={cx+side*34} cy={cy+8} r="9" fill="none" stroke={fx.color} strokeWidth="3"/><circle cx={cx+side*25} cy={cy-12} r="4" fill={fx.color}/><circle cx={cx+side*37} cy={cy-16} r="4" fill={fx.color}/><circle cx={cx+side*47} cy={cy-9} r="4" fill={fx.color}/></g>)}</g>;
     if(kind==='rocket')return <g className="canvas-fx fx-stamp fx-rocket">{Array.from({length:6},(_,i)=><path key={i} d={`M ${cx+(i-2.5)*7} ${cy+18+i*3} l ${-(i-2.5)*4} ${42+rnd()*25}`} stroke={fx.color} strokeWidth={3+rnd()*4} strokeLinecap="round" opacity={.35+rnd()*.4}/>)}<circle cx={cx} cy={cy} r="42" fill="none" stroke={fx.color} strokeWidth="4"/></g>;
     if(kind==='flower')return <g className="canvas-fx fx-stamp fx-flower">{Array.from({length:8},(_,i)=>{const a=i*Math.PI/4;return <circle key={i} cx={cx+Math.cos(a)*42} cy={cy+Math.sin(a)*42} r={9+rnd()*7} fill={fx.color} opacity=".42"/>})}<circle cx={cx} cy={cy} r="26" fill="none" stroke={fx.color} strokeWidth="4"/></g>;
     if(kind==='lightning')return <g className="canvas-fx fx-stamp fx-lightning">{Array.from({length:5},(_,i)=><path key={i} d={`M ${cx-18+rnd()*36} ${cy-48-rnd()*20} l ${-8+rnd()*16} ${28+rnd()*15} l ${12-rnd()*24} ${26+rnd()*20}`} fill="none" stroke={fx.color} strokeWidth={3+rnd()*4} strokeLinecap="round" strokeLinejoin="round"/> )}</g>;
@@ -241,9 +292,8 @@ export default function App(){
   const scrubRef=useRef<HTMLInputElement|null>(null);
 
   const song=useMemo(()=>interpretCanvas(marks,worldId),[marks,worldId]);
-  useEffect(()=>{ if(!world.stamps.some(s=>s.id===stampKind)) setStampKind(world.stamps[0]?.id||'cat'); },[worldId]);
 
-  useEffect(()=>{transport.setSong(song,true,true);},[song]);
+  useEffect(()=>{transport.setSong(song);},[song]);
   useEffect(()=>transport.subscribe(next=>{
     // Keep the 20Hz transport clock out of React's root render. Moving the
     // playhead and native range value imperatively is enough for time-only
@@ -252,12 +302,14 @@ export default function App(){
     if(playheadRef.current){playheadRef.current.style.left=`${progress*100}%`;playheadRef.current.style.opacity=next.isPlaying?'1':'.16';}
     if(scrubRef.current){scrubRef.current.value=String(Math.round(progress*1000));scrubRef.current.style.setProperty('--seek-fill',`${progress*100}%`);}
     setState(prev=>{
-      const sameDiscrete=prev.isPlaying===next.isPlaying&&prev.isPreparing===next.isPreparing&&prev.isAudioReady===next.isAudioReady&&prev.audioError===next.audioError&&prev.totalDuration===next.totalDuration;
+      if(prev.isPlaying&&!next.isPlaying){
+        setEffects([]);
+      }
+      const sameDiscrete=prev.isPlaying===next.isPlaying&&prev.isPreparing===next.isPreparing&&prev.totalDuration===next.totalDuration;
       const samePausedTime=next.isPlaying||Math.abs(prev.currentTime-next.currentTime)<.001;
       return sameDiscrete&&samePausedTime?prev:next;
     });
   }),[]);
-  useEffect(()=>()=>transport.stop(),[]);
   useEffect(()=>{
     const root=document.documentElement;
     let frame=0;
@@ -282,14 +334,28 @@ export default function App(){
     };
   },[]);
 
+  useEffect(()=>{
+    const unlock=()=>{
+      transport.unlockAudio();
+      window.removeEventListener('pointerdown',unlock);
+      window.removeEventListener('keydown',unlock);
+    };
+    window.addEventListener('pointerdown',unlock,{passive:true});
+    window.addEventListener('keydown',unlock,{passive:true});
+    return()=>{
+      window.removeEventListener('pointerdown',unlock);
+      window.removeEventListener('keydown',unlock);
+    };
+  },[]);
+
   const pointFromEvent=(e:React.PointerEvent<SVGSVGElement>):CanvasPoint=>{const r=canvasRect.current??e.currentTarget.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};};
   const addEffect=useCallback((mark:CanvasMark,kind:CanvasFx['kind'])=>{const p=mark.points[mark.points.length-1]||mark.points[0]||{x:.5,y:.5};const sound=WORLD_MAP[worldId].palette[mark.paletteIndex%WORLD_MAP[worldId].palette.length];const fx={id:`fx_${Date.now()}_${Math.random()}`,x:p.x,y:p.y,color:sound.color,kind,seed:mark.seed,stampKind:mark.stampKind};setEffects(prev=>[...prev.slice(-10),fx]);window.setTimeout(()=>setEffects(prev=>prev.filter(x=>x.id!==fx.id)),650);},[worldId]);
   const audition=useCallback((mark:CanvasMark,live=false,onset=false)=>transport.auditionPhrase(interpretMark(mark,worldId),live,onset),[worldId]);
   const captureLiveAudition=useCallback((mark:CanvasMark,played:ReturnType<typeof transport.auditionPhrase>,now:number)=>{
     if(!played.length)return;
     let capture=mark.performance;
-    if(!capture||capture.worldId!==worldId||capture.paletteIndex!==mark.paletteIndex){
-      capture={version:1,worldId,paletteIndex:mark.paletteIndex,events:[]};
+    if(!capture||capture.worldId!==worldId){
+      capture={worldId,events:[]};
       mark.performance=capture;
     }
     const pointIndex=Math.max(0,mark.points.length-1),gestureTime=Math.max(0,(now-livePerformanceStartedAt.current)/1000);
@@ -305,7 +371,39 @@ export default function App(){
       mark.performance=capture;
     }
   },[worldId]);
-  const commit=useCallback((mark:CanvasMark,kind:CanvasFx['kind'],preview=true)=>{const frozen=freezeMark(mark,worldId);setMarks(prev=>[...prev,frozen]);if(preview)audition(frozen,false);addEffect(frozen,kind);},[addEffect,audition,worldId]);
+  const commit=useCallback((mark:CanvasMark,kind:CanvasFx['kind'],preview=true)=>{const frozen=freezeMark(mark);setMarks(prev=>[...prev,frozen]);if(preview)audition(frozen,false);addEffect(frozen,kind);},[addEffect,audition,worldId]);
+
+  const auditionStamp=useCallback((kind:StampKind)=>{
+    const mark:CanvasMark={
+      id:`preview_stamp_${Date.now()}`,
+      paletteIndex,
+      tool:'stamp',
+      points:[{x:.5,y:.5}],
+      size:1,
+      seed:Math.floor(Math.random()*1e9),
+      stampKind:kind,
+      gesture:createGestureStats({x:.5,y:.5}),
+    };
+    audition(mark,false);
+  },[audition,paletteIndex]);
+
+  const auditionColor=useCallback((index:number)=>{
+    const c=world.palette[index%world.palette.length];
+    if(!c)return;
+    const note=c.role==='drums'?(c.drumNotes?.[0]??50):world.key;
+    const dummy={
+      midi:note,
+      timeOffset:0,
+      duration:.45,
+      velocity:.65,
+      sound:c.sound,
+      channelIndex:index,
+      channelRole:c.role,
+      room:c.room,
+      echo:c.echo,
+    };
+    transport.auditionPhrase({sourceMarkId:'color_audition',startTime:0,events:[dummy]},false);
+  },[world]);
 
   const publishDraft=useCallback((mark:CanvasMark|null,immediate=false)=>{
     draftRef.current=mark;
@@ -329,7 +427,7 @@ export default function App(){
     const points=eraseQueue.current.splice(0);if(!points.length)return;
     setMarks(prev=>{
       let next=prev;
-      for(const p of points)next=next.map(mark=>eraseMarkAt(mark,p,worldId,.050)).filter((mark):mark is CanvasMark=>Boolean(mark));
+      for(const p of points)next=next.map(mark=>eraseMarkAt(mark,p,.050)).filter((mark):mark is CanvasMark=>Boolean(mark));
       return next;
     });
   },[worldId]);
@@ -339,9 +437,16 @@ export default function App(){
     eraseFrame.current=requestAnimationFrame(()=>{eraseFrame.current=null;flushErase();});
   },[flushErase]);
 
-  const cancelBomb=useCallback(()=>{if(bombTimer.current!==null){window.clearTimeout(bombTimer.current);bombTimer.current=null;}setBombState(state=>state==='boom'?state:'idle');},[]);
+  const cancelBomb=useCallback(()=>{
+    if(bombTimer.current!==null){window.clearTimeout(bombTimer.current);bombTimer.current=null;}
+    setEffects([]);
+    transport.interruptPlayback();
+    setBombState(state=>state==='boom'?state:'idle');
+  },[]);
   const startBomb=useCallback(()=>{
     if(!marks.length||bombState!=='idle')return;
+    setEffects([]);
+    transport.interruptPlayback();
     setBombState('arming');
     bombTimer.current=window.setTimeout(()=>{
       bombTimer.current=null;setBombState('boom');transport.stop();setEffects([]);
@@ -356,14 +461,10 @@ export default function App(){
     if(hoverFrame.current!==null)cancelAnimationFrame(hoverFrame.current);
   },[]);
 
-  const beginCanvasGesture=useCallback((p:CanvasPoint,pointerType:string,buffered:CanvasPoint[]=[p],ended=false)=>{
+  const beginCanvasGesture=useCallback((p:CanvasPoint,pointerType:string)=>{
     if(bombState==='arming'){cancelBomb();return;}
-    if(pointerType!=='touch')publishHover(buffered[buffered.length-1]??p,true);
-    if(tool==='eraser'){
-      for(const point of buffered)eraseAt(point);
-      if(ended)flushErase();
-      return;
-    }
+    if(pointerType!=='touch')publishHover(p,true);
+    if(tool==='eraser'){eraseAt(p);return;}
     if(tool==='fill'){
       const result=performFloodFill(marks,p,world);
       const next:CanvasMark={
@@ -371,21 +472,16 @@ export default function App(){
         paletteIndex,tool:'fill',points:[p],size:1,seed:Math.floor(Math.random()*1e9),
         fillMaskDataUrl:result.fillMaskDataUrl,bounds:result.bounds,gesture:createGestureStats(p),
       };
-      const frozen=freezeMark(next,worldId);setMarks(prev=>[...prev,frozen]);audition(frozen,false);addEffect(next,'fill');publishDraft(null,true);return;
+      const frozen=freezeMark(next);setMarks(prev=>[...prev,frozen]);audition(frozen,false);addEffect(next,'fill');publishDraft(null,true);return;
     }
-    const points=buffered.length?buffered:[p];
-    let gesture=createGestureStats(points[0]);for(const point of points.slice(1))gesture=extendGestureStats(gesture,point);
-    const next:CanvasMark={id:`m_${Date.now()}_${Math.floor(Math.random()*1e5)}`,paletteIndex,tool,points:[...points],size:.86+Math.random()*.26,seed:Math.floor(Math.random()*1e9),stampKind:tool==='stamp'?stampKind:undefined,gesture};
+    const next:CanvasMark={id:`m_${Date.now()}_${Math.floor(Math.random()*1e5)}`,paletteIndex,tool,points:[p],size:.86+Math.random()*.26,seed:Math.floor(Math.random()*1e9),stampKind:tool==='stamp'?stampKind:undefined,gesture:createGestureStats(p)};
     if(tool==='stamp'||tool==='boom'){commit(next,tool==='boom'?'boom':'stamp');publishDraft(null,true);return;}
     const now=performance.now();livePerformanceStartedAt.current=now;lastCapturedPointIndex.current=-1;
-    next.performance={version:1,worldId,paletteIndex:next.paletteIndex,events:[]};
+    next.performance={worldId,events:[]};
     publishDraft(next,true);
-    captureLiveAudition(next,audition({...next,points:next.points.slice(-Math.min(next.points.length,5)),gesture:undefined,performance:undefined},true,true),now);
+    captureLiveAudition(next,audition({...next,points:[p],gesture:undefined,performance:undefined},true,true),now);
     lastLiveAudition.current=now;
-    if(ended){
-      commit(next,'scribble',false);publishDraft(null,true);activePointerId.current=null;
-    }
-  },[addEffect,audition,bombState,cancelBomb,captureLiveAudition,commit,eraseAt,flushErase,marks,paletteIndex,publishDraft,publishHover,stampKind,tool,world,worldId]);
+  },[addEffect,audition,bombState,cancelBomb,captureLiveAudition,commit,eraseAt,marks,paletteIndex,publishDraft,publishHover,stampKind,tool,world,worldId]);
 
   const pointerDown=(e:React.PointerEvent<SVGSVGElement>)=>{
     if(bombState==='arming'){cancelBomb();return;}
@@ -394,10 +490,9 @@ export default function App(){
     const p=pointFromEvent(e);
     activePointerId.current=e.pointerId;
     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit touch capture is enough */}
-    // Audio startup must never gate paint. The same user gesture unlocks Web
-    // Audio, while the mark begins immediately on the visual path.
-    if(!state.isAudioReady)void transport.activateDrawingAudio(worldId,paletteIndex);
-    beginCanvasGesture(p,e.pointerType,[p],false);
+    transport.interruptPlayback();
+    transport.unlockAudio();
+    beginCanvasGesture(p,e.pointerType);
   };
   const pointerMove=(e:React.PointerEvent<SVGSVGElement>)=>{
     const p=pointFromEvent(e);if(e.pointerType!=='touch')publishHover(p);
@@ -443,26 +538,34 @@ export default function App(){
 
   const chooseWorld=(id:WorldId)=>{
     if(id===worldId){setShowWorlds(false);return;}
-    transport.hardStop();
+    transport.interruptPlayback();
+    setEffects([]);
     activePointerId.current=null;
     eraseQueue.current=[];
     publishDraft(null,true);
     publishHover(null,true);
-    transport.unlockAudio(id,0);
     setWorldId(id);
     setShowWorlds(false);
     setPaletteIndex(0);
     setStampKind(WORLD_MAP[id].stamps[0]?.id||'cat');
   };
-  const undo=()=>{setMarks(prev=>prev.slice(0,-1));};
+  const undo=()=>{
+    setEffects([]);
+    setMarks(prev=>prev.slice(0,-1));
+  };
   const palette=world.palette;
 
-  return <div className={`paint-app world-${worldId}`} style={{'--canvas':world.canvas,'--ink':world.canvasInk,'--accent':world.accent} as React.CSSProperties} onPointerDownCapture={e=>{if(bombState==='arming' && !(e.target as HTMLElement).closest('.bomb-reset')) cancelBomb();}}>
+  return <div className={`paint-app world-${worldId}`} style={{'--canvas':world.canvas,'--ink':world.canvasInk,'--accent':world.accent} as React.CSSProperties} onPointerDownCapture={e=>{
+    if(bombState==='arming' && !(e.target as HTMLElement).closest('.bomb-reset')){
+      setEffects([]);
+      cancelBomb();
+    }
+  }}>
     <header className="tiny-topbar">
       <div className="little-brand"><span>d</span><b>draw sounds</b></div>
       <div className="tiny-actions">
         <button onClick={undo} disabled={!marks.length||bombState!=='idle'} aria-label="Undo last mark"><RotateCcw size={18}/></button>
-        <button className={`bomb-reset ${bombState!=='idle'?`is-${bombState}`:''}`} disabled={!marks.length&&bombState==='idle'} aria-label={bombState==='arming'?'Bomb lit. Touch anywhere to cancel':'Clear the whole drawing'} onClick={e=>{e.stopPropagation();bombState==='arming'?cancelBomb():startBomb();}}><Bomb size={19}/><i/></button>
+        <button className={`bomb-reset ${bombState!=='idle'?`is-${bombState}`:''}`} disabled={!marks.length&&bombState==='idle'} aria-label={bombState==='arming'?'Bomb lit. Touch anywhere to cancel':'Clear the whole drawing'} onClick={e=>{e.stopPropagation();setEffects([]);transport.interruptPlayback();bombState==='arming'?cancelBomb():startBomb();}}><Bomb size={19}/><i/></button>
       </div>
     </header>
 
@@ -489,9 +592,10 @@ export default function App(){
             <button
               key={`${worldId}_${i}`}
               className={`paint-pot ${paletteIndex===i?'active':''}`}
-              onPointerDown={()=>transport.preparePalette(worldId,i)}
+              onPointerDown={()=>transport.unlockAudio()}
               onClick={()=>{
                 setPaletteIndex(i);
+                auditionColor(i);
                 if(tool==='eraser')setTool('crayon');
               }}
               aria-label={c.name}
@@ -501,61 +605,72 @@ export default function App(){
             </button>
           ))}
         </div>
-        <div className="shelf-tools" role="group" aria-label="Drawing toys">
-          {TOOLS.map(t=>(
-            <button
-              key={t.id}
-              className={`toy-tool ${tool===t.id?'active':''}`}
-              onClick={()=>setTool(t.id)}
-              aria-label={t.label}
-              title={t.label}
-            >
-              {t.id==='crayon'&&<Pencil size={21} strokeWidth={2.4}/>}
-              {t.id==='dots'&&(
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
-                  <circle cx="4" cy="12" r="2.8"/>
-                  <circle cx="12" cy="12" r="3.2"/>
-                  <circle cx="20" cy="12" r="2.8"/>
-                </svg>
-              )}
-              {t.id==='spray'&&<Sparkles size={21} strokeWidth={2.2}/>}
-              {t.id==='stamp'&&(
-                <svg viewBox="0 0 44 44" width="28" height="28" aria-hidden="true">
-                  <CuteStamp kind={stampKind} cx={22} cy={22} r={17} color={palette[paletteIndex].color} ink={tool==='stamp'?'var(--canvas)':'currentColor'}/>
-                </svg>
-              )}
-              {t.id==='boom'&&<span style={{fontSize:'24px',lineHeight:1}} aria-hidden="true">✹</span>}
-              {t.id==='fill'&&<PaintBucket size={21} strokeWidth={2.2}/>}
-              {t.id==='eraser'&&<Eraser size={21} strokeWidth={2.2}/>}
-            </button>
-          ))}
+        <div className={`shelf-tools ${tool==='stamp'?'is-stamps':''}`} role="group" aria-label={tool==='stamp'?'Stamps':'Drawing toys'}>
+          {tool !== 'stamp' ? (
+            TOOLS.map(t=>(
+              <button
+                key={t.id}
+                className={`toy-tool ${tool===t.id?'active':''}`}
+                onPointerDown={()=>transport.unlockAudio()}
+                onClick={()=>{
+                  setTool(t.id);
+                  if(t.id==='stamp') auditionStamp(stampKind);
+                }}
+                aria-label={t.label}
+                title={t.label}
+              >
+                {t.id==='crayon'&&<Pencil size={21} strokeWidth={2.4}/>}
+                {t.id==='dots'&&(
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                    <circle cx="4" cy="12" r="2.8"/>
+                    <circle cx="12" cy="12" r="3.2"/>
+                    <circle cx="20" cy="12" r="2.8"/>
+                  </svg>
+                )}
+                {t.id==='spray'&&<Sparkles size={21} strokeWidth={2.2}/>}
+                {t.id==='stamp'&&<StampToolbarIcon kind={stampKind} size={21}/>}
+                {t.id==='boom'&&<span style={{fontSize:'24px',lineHeight:1}} aria-hidden="true">✹</span>}
+                {t.id==='fill'&&<PaintBucket size={21} strokeWidth={2.2}/>}
+                {t.id==='eraser'&&<Eraser size={21} strokeWidth={2.2}/>}
+              </button>
+            ))
+          ) : (
+            <>
+              <button
+                className="toy-tool tool-mode-switch"
+                onPointerDown={()=>transport.unlockAudio()}
+                onClick={()=>setTool('crayon')}
+                aria-label="Back to drawing tools"
+                title="Back to drawing tools"
+              >
+                <Pencil size={21} strokeWidth={2.4}/>
+              </button>
+              {world.stamps.map(s=>(
+                <button
+                  key={s.id}
+                  className={`toy-tool ${stampKind===s.id?'active':''}`}
+                  onPointerDown={()=>transport.unlockAudio()}
+                  onClick={()=>{
+                    setStampKind(s.id);
+                    auditionStamp(s.id);
+                  }}
+                  aria-label={s.label}
+                  title={s.label}
+                >
+                  <StampToolbarIcon kind={s.id} size={21}/>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
-      {tool==='stamp'&&(
-        <div className="stamp-tray" role="group" aria-label="Stamps">
-          {world.stamps.map(s=>(
-            <button
-              key={s.id}
-              className={stampKind===s.id?'active':''}
-              onClick={()=>setStampKind(s.id)}
-              aria-label={s.label}
-              title={s.label}
-            >
-              <StampCardPreview kind={s.id} color={palette[paletteIndex].color}/>
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="play-row">
-        <button className={`giant-play ${state.isPlaying?'is-playing':''} ${state.isPreparing?'is-preparing':''} ${state.audioError?'has-audio-error':''}`} onPointerDown={()=>transport.unlockAudio(worldId,paletteIndex)} onClick={()=>marks.length?transport.togglePlay():undefined} disabled={!marks.length} aria-label={state.audioError?'SoundFont failed to load. Tap to retry':state.isPreparing?'Preparing sounds':state.isPlaying?'Pause drawing':'Play drawing'} title={state.audioError??undefined}>
+        <button className={`giant-play ${state.isPlaying?'is-playing':''} ${state.isPreparing?'is-preparing':''}`} onPointerDown={()=>transport.unlockAudio()} onClick={()=>{if(!marks.length)return;setEffects([]);transport.togglePlay();}} disabled={!marks.length} aria-label={state.isPreparing?'Preparing sounds':state.isPlaying?'Pause drawing':'Play drawing'}>
           {state.isPlaying?<Pause size={27} fill="currentColor"/>:<Play size={29} fill="currentColor"/>}
         </button>
-        <div className={`transport-scrub ${state.audioError?'has-error':''}`}>
-          {state.audioError
-            ? <button className="soundfont-retry" type="button" onPointerDown={()=>transport.unlockAudio(worldId,paletteIndex)} onClick={()=>transport.togglePlay()} title={state.audioError}>Sound unavailable · retry</button>
-            : <input ref={scrubRef} aria-label="Move through your drawing" type="range" min="0" max="1000" step="1" defaultValue="0" style={{'--seek-fill':'0%'} as React.CSSProperties} onChange={e=>transport.seek((Number(e.target.value)/1000)*song.totalDuration)} disabled={!marks.length}/>}
+        <div className="transport-scrub">
+          <input ref={scrubRef} aria-label="Move through your drawing" type="range" min="0" max="1000" step="1" defaultValue="0" style={{'--seek-fill':'0%'} as React.CSSProperties} onChange={e=>{setEffects([]);transport.seek((Number(e.target.value)/1000)*song.totalDuration);}} disabled={!marks.length}/>
         </div>
         <button className="world-pill" onClick={()=>setShowWorlds(true)} aria-label={`Change world. Current world ${world.label}`}><span className="world-dots">{palette.slice(0,3).map((c,i)=><i key={i} style={{background:c.color}}/>)}</span><b>{world.label}</b></button>
       </div>

@@ -106,14 +106,14 @@ function worldStampPhrase(mark:CanvasMark,w:WorldConfig,p:Performer,total:number
   if(w.id==='flamenco')return flamencoTechnique(mark,w,p,total,i);
   if(w.id==='tango')return tangoTechnique(mark,w,p,total,i);
   const beat=beatSeconds(w),pt=mark.points[0]||{x:.5,y:.5},abs=intent.startTime,kind=mark.stampKind||'star',out:NoteEvent[]=[],r=rng(intent.seed^0x57A6),base=w.key+(p.octave-4)*12;
-  const flavor:Record<string,{cat:number[];frog:number[];penguin:number[];burst:number[];rise:number[];hit:number[];burstGap:number;riseGap:number}>={
-    dreamland:{cat:[0,2,0],frog:[-2,0,-2,3],penguin:[0,1,0,2,1],burst:[0,2,4,7],rise:[0,1,3,5,7],hit:[0,7],burstGap:.34,riseGap:.44},
-    drum_circle:{cat:[0,3,1],frog:[0,-1,0,2],penguin:[0,1,0,1,2],burst:[0,3,1,4,2],rise:[0,1,2,3,4,5],hit:[0,0,3],burstGap:.24,riseGap:.22},
-    pop_star:{cat:[0,4,2],frog:[0,-2,2,0],penguin:[0,1,0,2,1],burst:[0,2,4,2],rise:[0,1,2,4,5],hit:[0,4,0],burstGap:.22,riseGap:.28},
-    rock_monster:{cat:[0,3,0],frog:[0,-3,0,-2],penguin:[0,0,2,0,3],burst:[0,0,3,5],rise:[0,2,3,5,7],hit:[0,0,5],burstGap:.18,riseGap:.20},
-    salsa_party:{cat:[0,3,1],frog:[0,-1,3,0],penguin:[0,2,1,3,2],burst:[0,3,1,4,2],rise:[0,1,3,4,6],hit:[0,3,0],burstGap:.19,riseGap:.24},
-    weird_cabinet:{cat:[0,5,-2],frog:[0,-4,3,-1],penguin:[0,3,-1,4,1],burst:[0,4,-2,5,1],rise:[0,3,1,6,4],hit:[0,-3,7],burstGap:.29,riseGap:.31},
-    zouk:{cat:[0,2,0],frog:[0,-2,1,-1],penguin:[0,1,0,2,1],burst:[0,2,1,4],rise:[0,1,2,3,5],hit:[0,2,0],burstGap:.26,riseGap:.34},
+  const flavor:Record<string,{cat:number[];frog:number[];panda:number[];burst:number[];rise:number[];hit:number[];burstGap:number;riseGap:number}>={
+    dreamland:{cat:[0,2,0],frog:[-2,0,-2,3],panda:[0,1,0,2,1],burst:[0,2,4,7],rise:[0,1,3,5,7],hit:[0,7],burstGap:.34,riseGap:.44},
+    drum_circle:{cat:[0,3,1],frog:[0,-1,0,2],panda:[0,1,0,1,2],burst:[0,3,1,4,2],rise:[0,1,2,3,4,5],hit:[0,0,3],burstGap:.24,riseGap:.22},
+    pop_star:{cat:[0,4,2],frog:[0,-2,2,0],panda:[0,1,0,2,1],burst:[0,2,4,2],rise:[0,1,2,4,5],hit:[0,4,0],burstGap:.22,riseGap:.28},
+    rock_monster:{cat:[0,3,0],frog:[0,-3,0,-2],panda:[0,0,2,0,3],burst:[0,0,3,5],rise:[0,2,3,5,7],hit:[0,0,5],burstGap:.18,riseGap:.20},
+    salsa_party:{cat:[0,3,1],frog:[0,-1,3,0],panda:[0,2,1,3,2],burst:[0,3,1,4,2],rise:[0,1,3,4,6],hit:[0,3,0],burstGap:.19,riseGap:.24},
+    weird_cabinet:{cat:[0,5,-2],frog:[0,-4,3,-1],panda:[0,3,-1,4,1],burst:[0,4,-2,5,1],rise:[0,3,1,6,4],hit:[0,-3,7],burstGap:.29,riseGap:.31},
+    zouk:{cat:[0,2,0],frog:[0,-2,1,-1],panda:[0,1,0,2,1],burst:[0,2,1,4],rise:[0,1,2,3,5],hit:[0,2,0],burstGap:.26,riseGap:.34},
   };
   const f=flavor[w.id]??flavor.pop_star,notes=p.drumNotes?.length?p.drumNotes:[36,38,42];
   const addDrum=(idx:number,rb:number,v:number,d=.12)=>out.push(event(notes[((idx%notes.length)+notes.length)%notes.length],rb*beat,beat*d,v,extra(p,i,pt)));
@@ -124,7 +124,7 @@ function worldStampPhrase(mark:CanvasMark,w:WorldConfig,p:Performer,total:number
   if(p.role==='drums'){
     if(kind==='cat')f.cat.forEach((_,k)=>addDrum(k===1?1:0,sway([0,.22,.68][k]??k*.24,k),k===0?.62:k===1?.45:.54,.09));
     else if(kind==='frog')f.frog.forEach((_,k)=>addDrum(k%2?1:0,sway([0,.48,1.0,1.55][k]??k*.5,k),k%2?.43:.57,.15));
-    else if(kind==='penguin')f.penguin.forEach((_,k)=>addDrum(k%2?2:0,sway([0,.5,1,1.5,2.25][k]??k*.5,k),.40+(k===0?.12:0),.11));
+    else if(kind==='panda')f.panda.forEach((_,k)=>addDrum(k%2?2:0,sway([0,.5,1,1.5,2.25][k]??k*.5,k),.40+(k===0?.12:0),.11));
     else if(kind==='star')f.burst.forEach((_,k)=>addDrum(k,sway(k*f.burstGap,k),.42+(k===0?.14:0)+(w.id==='drum_circle'?r()*.08:0),.10));
     else if(kind==='rocket')f.rise.forEach((_,k)=>addDrum(k,sway(k*f.riseGap,k),.34+k*.035,.10));
     else if(kind==='flower'){[0,.5,1,1.5,2,2.75].forEach((rb,k)=>addDrum(k,sway(rb,k),.36+(k===0||k===4?.12:0),.13));}
@@ -135,8 +135,8 @@ function worldStampPhrase(mark:CanvasMark,w:WorldConfig,p:Performer,total:number
     let prev:number|undefined;f.cat.forEach((step,k)=>{const rb=sway([0,.22,.68][k]??k*.24,k),e=melodic(step,rb,k===0?.58:.43,w.id==='dreamland'?.9:.24,k===0?'accent':'staccato',prev);prev=e.midi;});
   }else if(kind==='frog'){
     let prev:number|undefined;f.frog.forEach((step,k)=>{const rb=sway([0,.48,1.0,1.55][k]??k*.5,k),e=melodic(step,rb,k%2===0?.50:.38,w.id==='dreamland'?1.15:.42,k===0?'accent':'tenuto',prev);if(k%2===0&&out.length>1){const prior=out[out.length-2];if(Math.abs(e.midi-prior.midi)<=5)prior.glideToMidi=e.midi;}prev=e.midi;});
-  }else if(kind==='penguin'){
-    let prev:number|undefined;f.penguin.forEach((step,k)=>{const rb=sway([0,.5,1,1.5,2.25][k]??k*.5,k),e=melodic(step,rb,.40+(k===0?.10:0),w.id==='dreamland'?.82:.32,k===0?'accent':'tenuto',prev);prev=e.midi;});
+  }else if(kind==='panda'){
+    let prev:number|undefined;f.panda.forEach((step,k)=>{const rb=sway([0,.5,1,1.5,2.25][k]??k*.5,k),e=melodic(step,rb,.40+(k===0?.10:0),w.id==='dreamland'?.82:.32,k===0?'accent':'tenuto',prev);prev=e.midi;});
   }else if(kind==='star'){
     let prev:number|undefined;f.burst.forEach((step,k)=>{const e=melodic(step,sway(k*f.burstGap,k),.42+(k===0?.08:0),w.id==='dreamland'?1.45:.42,k===0?'accent':'staccato',prev);prev=e.midi;});
   }else if(kind==='rocket'){
@@ -166,7 +166,7 @@ function traditionalDrums(mark:CanvasMark,w:WorldConfig,p:Performer,i:number,int
  */
 function capturedPerformancePhrase(mark:CanvasMark,w:WorldConfig,intent:PhraseIntent):CompileResult|null{
   const capture=mark.performance;
-  if(!capture||capture.version!==1||capture.worldId!==w.id||capture.paletteIndex!==mark.paletteIndex||capture.events.length<1)return null;
+  if(!capture||capture.worldId!==w.id||capture.events.length<1)return null;
   const source=capture.events.filter(e=>Number.isFinite(e.midi)&&Number.isFinite(e.velocity)&&Number.isFinite(e.gestureTime)&&Number.isFinite(e.pointIndex));
   if(!source.length)return null;
   const beat=beatSeconds(w),phraseSeconds=Math.max(beat*.5,intent.beats*beat);

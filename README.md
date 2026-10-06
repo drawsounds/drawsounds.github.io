@@ -1,1 +1,3 @@
-Draw Sounds turns drawing gestures into playful, world-specific music you can hear live and play back.
+# Draw Sounds
+
+Draw sounds came from a shower thought — what if Kid Pix was a sound editor?

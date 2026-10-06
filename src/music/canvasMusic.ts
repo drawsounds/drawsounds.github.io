@@ -1,7 +1,7 @@
 import type { NoteEvent, Phrase, Song } from '../audio/types';
 import type { CanvasMark, CanvasPoint, CanvasTool, DrawTool, StampKind, WorldConfig, WorldId } from './canvasTypes';
 import type { PhraseMotif } from './phraseEngine';
-import { appendRelationshipGraph, buildRelationshipGraph, type MarkRelationship } from './relationships';
+import { buildRelationshipGraph } from './relationships';
 import { compileMarkPhrase, gestureStats, markBounds } from './phraseEngine';
 import { WORLD_MAP, WORLDS } from './worlds/config';
 export type { CanvasMark, CanvasPoint, CanvasTool, DrawTool, StampKind, WorldConfig, WorldId } from './canvasTypes';
@@ -30,22 +30,6 @@ function cleanPhrase(mark:CanvasMark,phrase:Phrase){
   return{...phrase,events:events.map(e=>({...e}))};
 }
 
-let relationCache:{worldId:WorldId;ids:string[];rels:MarkRelationship[]}|null=null;
-function relationshipsFor(marks:CanvasMark[],w:WorldConfig){
-  const ids=marks.map(m=>m.id);
-  if(relationCache?.worldId===w.id){
-    const prev=relationCache.ids;
-    if(ids.length===prev.length&&ids.every((id,i)=>id===prev[i]))return relationCache.rels;
-    if(ids.length===prev.length+1&&prev.every((id,i)=>id===ids[i])){
-      const rels=appendRelationshipGraph(relationCache.rels,marks,w);relationCache={worldId:w.id,ids,rels};return rels;
-    }
-    if(ids.length<prev.length&&ids.every((id,i)=>id===prev[i])){
-      const keep=new Set(ids),rels=relationCache.rels.filter(r=>keep.has(r.sourceId)&&keep.has(r.targetId));relationCache={worldId:w.id,ids,rels};return rels;
-    }
-  }
-  const rels=buildRelationshipGraph(marks,w);relationCache={worldId:w.id,ids,rels};return rels;
-}
-
 function relationshipEvents(rel:{kind:string;strength:number},source:Phrase,target:Phrase,w:WorldConfig){
   const out:NoteEvent[]=[];if(!source.events.length||!target.events.length)return out;
   const beat=60/w.tempo,mode=w.feel.interaction;
@@ -72,8 +56,8 @@ function relationshipEvents(rel:{kind:string;strength:number},source:Phrase,targ
   return out;
 }
 
-export function freezeMark(mark:CanvasMark,_worldId:WorldId){const g=gestureStats(mark);return{...mark,points:mark.points.map(p=>({...p})),gesture:{...g},bounds:{...markBounds(mark)},erasures:mark.erasures?.map(e=>({...e})),performance:mark.performance?{...mark.performance,events:mark.performance.events.map(e=>({...e}))}:undefined};}
-export function eraseMarkAt(mark:CanvasMark,p:CanvasPoint,_worldId:WorldId,radius=.05){
+export function freezeMark(mark:CanvasMark){const g=gestureStats(mark);return{...mark,points:mark.points.map(p=>({...p})),gesture:{...g},bounds:{...markBounds(mark)},erasures:mark.erasures?.map(e=>({...e})),performance:mark.performance?{...mark.performance,events:mark.performance.events.map(e=>({...e}))}:undefined};}
+export function eraseMarkAt(mark:CanvasMark,p:CanvasPoint,radius=.05){
   const b=mark.bounds;
   // Reject distant eraser samples before scanning stroke points.
   if(b&& (p.x<b.minX-radius||p.x>b.maxX+radius||p.y<b.minY-radius||p.y>b.maxY+radius))return mark;
@@ -95,7 +79,7 @@ export function interpretCanvas(marks:CanvasMark[],worldId:WorldId):Song{
   const w=WORLD_MAP[worldId],total=totalDuration(w),motifs=new Map<number,PhraseMotif>(),ordinals=new Map<number,number>(),phrases:Phrase[]=[];
   for(const mark of marks){const voice=mark.paletteIndex%w.palette.length,ordinal=ordinals.get(voice)??0,previous=motifs.get(voice),compiled=basePhrase(mark,w,total,ordinal,previous);ordinals.set(voice,ordinal+1);if(compiled.motif)motifs.set(voice,compiled.motif);phrases.push(cleanPhrase(mark,compiled.phrase));}
   const byId=new Map(phrases.map(p=>[p.sourceMarkId,p]));
-  for(const rel of relationshipsFor(marks,w)){const src=byId.get(rel.sourceId),tar=byId.get(rel.targetId);if(src&&tar)src.events.push(...relationshipEvents(rel,src,tar,w));}
+  for(const rel of buildRelationshipGraph(marks,w)){const src=byId.get(rel.sourceId),tar=byId.get(rel.targetId);if(src&&tar)src.events.push(...relationshipEvents(rel,src,tar,w));}
   // Captured performances keep a higher event ceiling than generated phrases.
   const capturedIds=new Set<string>();for(const mark of marks)if(mark.performance?.worldId===worldId&&mark.performance.events.length)capturedIds.add(mark.id);
   for(const phrase of phrases){

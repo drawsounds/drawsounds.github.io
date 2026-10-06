@@ -36,20 +36,11 @@ function pairRelations(a:CanvasMark,b:CanvasMark,world:WorldConfig,A=bounds(a),B
 }
 function capBySource(rels:MarkRelationship[]){const bySource=new Map<string,MarkRelationship[]>();for(const rel of rels){const arr=bySource.get(rel.sourceId)||[];arr.push(rel);bySource.set(rel.sourceId,arr);}const out:MarkRelationship[]=[];for(const arr of bySource.values())out.push(...arr.sort((a,b)=>b.strength-a.strength).slice(0,3));return out;}
 
-/** Initial spatial-bucket build. Each source keeps only its three strongest
- * musical relationships, which also bounds phrase-overlay work. */
 export function buildRelationshipGraph(marks:CanvasMark[],world:WorldConfig){
   if(marks.length<2)return[];
-  const out:MarkRelationship[]=[],reach=Math.max(.02,world.relationReach),cell=Math.max(.055,reach*1.35),cols=Math.ceil(1/cell),rows=cols,bs=marks.map(bounds),buckets=new Map<number,number[]>();
-  for(let i=0;i<marks.length;i++){const b=bs[i],minX=Math.max(0,Math.floor((b.minX-reach)/cell)),maxX=Math.min(cols-1,Math.floor((b.maxX+reach)/cell)),minY=Math.max(0,Math.floor((b.minY-reach)/cell)),maxY=Math.min(rows-1,Math.floor((b.maxY+reach)/cell));for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){const key=y*cols+x,arr=buckets.get(key)||[];arr.push(i);buckets.set(key,arr);}}
-  const pairs=new Set<number>(),n=marks.length;for(const bucket of buckets.values())for(let a=0;a<bucket.length;a++)for(let b=a+1;b<bucket.length;b++){const i=bucket[a],j=bucket[b],lo=Math.min(i,j),hi=Math.max(i,j);pairs.add(lo*n+hi);}
-  for(const pair of pairs){const i=Math.floor(pair/n),j=pair%n;out.push(...pairRelations(marks[i],marks[j],world,bs[i],bs[j]));}
+  const out:MarkRelationship[]=[],bs=marks.map(bounds);
+  for(let i=0;i<marks.length-1;i++)for(let j=i+1;j<marks.length;j++){
+    out.push(...pairRelations(marks[i],marks[j],world,bs[i],bs[j]));
+  }
   return capBySource(out);
-}
-
-/** Append-only fast path. Existing mark geometry is immutable, so adding one
- * mark only creates relationships touching that mark. Merging and re-capping
- * can displace a weaker old relationship without rebuilding the whole graph. */
-export function appendRelationshipGraph(previous:MarkRelationship[],marks:CanvasMark[],world:WorldConfig){
-  if(marks.length<2)return[];const newest=marks[marks.length-1],fresh:MarkRelationship[]=[];for(let i=0;i<marks.length-1;i++)fresh.push(...pairRelations(marks[i],newest,world));return capBySource([...previous,...fresh]);
 }

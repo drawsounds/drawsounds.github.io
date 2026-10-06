@@ -3,7 +3,7 @@ import type { NoteEvent, PerformerRole, SoundId } from '../audio/types';
 export type WorldId = 'dreamland' | 'drum_circle' | 'pop_star' | 'rock_monster' | 'salsa_party' | 'weird_cabinet' | 'zouk' | 'flamenco' | 'tango';
 export type CanvasTool = 'crayon' | 'dots' | 'spray' | 'stamp' | 'boom' | 'fill' | 'eraser';
 export type DrawTool = Exclude<CanvasTool, 'eraser'>;
-export type StampKind = 'cat' | 'frog' | 'penguin' | 'star' | 'rocket' | 'flower' | 'lightning';
+export type StampKind = 'cat' | 'frog' | 'panda' | 'star' | 'rocket' | 'flower' | 'lightning';
 
 export interface CanvasPoint { x: number; y: number; }
 
@@ -16,9 +16,7 @@ export interface CapturedPerformanceEvent extends NoteEvent {
 }
 
 export interface LivePerformanceCapture {
-  version: 1;
   worldId: WorldId;
-  paletteIndex: number;
   events: CapturedPerformanceEvent[];
 }
 

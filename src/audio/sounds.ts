@@ -49,13 +49,30 @@ export const soundSpec=(sound:SoundId)=>SOUNDS[sound];
 export const bankOffset=(bank:RuntimeBank)=>BANKS[bank].offset;
 
 function assetUrl(path:string){
-  const base=import.meta.env.BASE_URL||'./';
-  const prefix=base.endsWith('/')?base:`${base}/`;
-  return `${prefix}${path}`;
+  const clean = path.startsWith('/') ? path.slice(1) : path;
+  try {
+    return new URL(clean, document.baseURI || window.location.href).href;
+  } catch {
+    const base = import.meta.env.BASE_URL || '/';
+    const prefix = base.endsWith('/') ? base : `${base}/`;
+    return `${prefix}${clean}`;
+  }
 }
 
-export async function fetchRuntimeBank(bank:RuntimeBank){
-  const response=await fetch(assetUrl(BANKS[bank].path));
-  if(!response.ok)throw new Error(`Audio asset unavailable (${response.status})`);
-  return response.arrayBuffer();
+const bankCache = new Map<RuntimeBank, Promise<ArrayBuffer>>();
+
+export function fetchRuntimeBank(bank:RuntimeBank): Promise<ArrayBuffer>{
+  let job = bankCache.get(bank);
+  if(!job){
+    job = fetch(assetUrl(BANKS[bank].path))
+      .then(response => {
+        if(!response.ok) throw new Error(`Audio asset unavailable (${response.status})`);
+        return response.arrayBuffer();
+      });
+    bankCache.set(bank, job);
+    job.catch(() => {
+      if(bankCache.get(bank) === job) bankCache.delete(bank);
+    });
+  }
+  return job.then(buf => buf.slice(0));
 }
