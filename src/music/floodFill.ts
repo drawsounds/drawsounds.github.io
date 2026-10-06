@@ -191,25 +191,39 @@ export function performFloodFill(
     }
   }
 
-  // 8. Dilation (+2px) into the original stroke boundary:
-  // Ensures fill seats neatly UNDER the thick crayon stroke, preventing hairline white gaps.
+  // 8. Seat the fill *inside* the closed crayon wall. The old free-space
+  // dilation stopped one or two pixels shy of the anti-aliased/soft crayon
+  // edge, which exposed the paper as a pale/translucent fringe after a fill.
+  //
+  // Expand only through pixels that belong to the closed boundary mask. That
+  // gives the fill a solid underlap beneath the inside of the crayon without
+  // ever spilling out into open space on the far side of the line. The wall is
+  // at least the 14px crayon width plus the gap-closing margin, so this reach
+  // cannot tunnel through even the thinnest supported stroke.
   const finalMask = new Uint8Array(filledMask);
-  const dilateRad = 2;
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = minX; x <= maxX; x++) {
-      if (filledMask[y * W + x]) {
-        for (let dy = -dilateRad; dy <= dilateRad; dy++) {
-          const ny = y + dy;
-          if (ny < 0 || ny >= H) continue;
-          for (let dx = -dilateRad; dx <= dilateRad; dx++) {
-            const nx = x + dx;
-            if (nx < 0 || nx >= W) continue;
-            // Only dilate if it is part of the original stroke or free space
-            finalMask[ny * W + nx] = 1;
-          }
+  const underlapReach = gapRad + 4;
+  let frontier = new Uint8Array(filledMask);
+  for (let step = 0; step < underlapReach; step++) {
+    const next = new Uint8Array(W * H);
+    let advanced = false;
+    for (let y = Math.max(0, minY - underlapReach); y <= Math.min(H - 1, maxY + underlapReach); y++) {
+      for (let x = Math.max(0, minX - underlapReach); x <= Math.min(W - 1, maxX + underlapReach); x++) {
+        const idx = y * W + x;
+        if (!frontier[idx]) continue;
+        for (let d = 0; d < 4; d++) {
+          const nx = x + (d === 0 ? -1 : d === 1 ? 1 : 0);
+          const ny = y + (d === 2 ? -1 : d === 3 ? 1 : 0);
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const n = ny * W + nx;
+          if (finalMask[n] || !closedMask[n]) continue;
+          finalMask[n] = 1;
+          next[n] = 1;
+          advanced = true;
         }
       }
     }
+    if (!advanced) break;
+    frontier = next;
   }
 
   // 9. Store only the alpha mask. The visible color is applied by SVG at
@@ -233,10 +247,10 @@ export function performFloodFill(
   const fillMaskDataUrl = maskCanvas.toDataURL('image/png');
 
   const bounds = {
-    minX: Math.max(0, (minX - dilateRad) / W),
-    maxX: Math.min(1, (maxX + dilateRad) / W),
-    minY: Math.max(0, (minY - dilateRad) / H),
-    maxY: Math.min(1, (maxY + dilateRad) / H),
+    minX: Math.max(0, (minX - underlapReach) / W),
+    maxX: Math.min(1, (maxX + underlapReach) / W),
+    minY: Math.max(0, (minY - underlapReach) / H),
+    maxY: Math.min(1, (maxY + underlapReach) / H),
   };
 
   return {

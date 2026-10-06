@@ -100,8 +100,13 @@ class Transport {
 
   togglePlay(){
     if(this.playing)this.pause();
-    else if(this.preparing){this.playRequest++;this.preparing=false;this.emit();}
-    else void this.play();
+    else if(this.preparing){
+      this.playRequest++;this.preparing=false;
+      // A second tap while loading is also a stop gesture. Silence any live
+      // audition bus and discard room/echo tails that may already be ringing.
+      this.studio?.hardStop();
+      this.emit();
+    }else void this.play();
   }
 
   private async play(){
@@ -140,7 +145,9 @@ class Transport {
     this.pausedAt=this.currentTime();
     this.playing=false;
     this.clearLoops();
-    this.studio.stopTransport();
+    // Pause is user-requested silence, not merely a transport-note pause. Kill
+    // audition voices and shared effect tails too while preserving the clock.
+    this.studio.hardStop();
     this.emit();
   }
 
@@ -164,7 +171,9 @@ class Transport {
     this.clearLoops();
     this.scheduledTo=this.pausedAt;
     this.nextEventIndex=this.lowerBound(this.pausedAt);
-    this.studio?.stopTransport();
+    // Stop is an absolute silence boundary. Both playback buses and the room/
+    // echo layer must end now; otherwise bomb/reset can leave audible tails.
+    this.studio?.hardStop();
     this.emit();
   }
 

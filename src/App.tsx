@@ -222,8 +222,8 @@ const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;colo
     if(mark.fillMaskDataUrl){
       const fillMaskId=`fill_${mark.id.replace(/[^a-zA-Z0-9_]/g,'_')}`;
       return <g className={cls}>
-        <defs><mask id={fillMaskId} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="700">
-          <image href={mark.fillMaskDataUrl} x="0" y="0" width="1000" height="700" preserveAspectRatio="none" pointerEvents="none"/>
+        <defs><mask id={fillMaskId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" maskType="alpha" x="0" y="0" width="1000" height="700">
+          <image href={mark.fillMaskDataUrl} x="0" y="0" width="1000" height="700" preserveAspectRatio="none" pointerEvents="none" style={{imageRendering:'pixelated'}}/>
         </mask></defs>
         <rect width="1000" height="700" fill={color} mask={`url(#${fillMaskId})`}/>
       </g>;
@@ -232,8 +232,8 @@ const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;colo
   }
   if(mark.tool==='crayon'){
     return <g className={cls}>
-      <path d={path} fill="none" stroke={color} strokeWidth={sw*1.08} strokeLinecap="round" strokeLinejoin="round" opacity=".22"/>
-      <path d={path} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" opacity=".98"/>
+      <path d={path} fill="none" stroke={color} strokeWidth={sw*1.06} strokeLinecap="round" strokeLinejoin="round"/>
+      <path d={path} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"/>
       <path d={path} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={Math.max(1.8,sw*0.24)} strokeLinecap="round" strokeLinejoin="round"/>
     </g>;
   }
@@ -386,8 +386,8 @@ export default function App(){
     if(!marks.length||bombState!=='idle')return;
     setBombState('arming');
     bombTimer.current=window.setTimeout(()=>{
-      bombTimer.current=null;setBombState('boom');transport.stop();
-      window.setTimeout(()=>{setMarks([]);publishDraft(null,true);setEffects([]);},160);
+      bombTimer.current=null;setBombState('boom');transport.stop();setEffects([]);
+      window.setTimeout(()=>{setMarks([]);publishDraft(null,true);},160);
       window.setTimeout(()=>setBombState('idle'),650);
     },1000);
   },[marks.length,bombState,publishDraft]);

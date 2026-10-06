@@ -36,8 +36,11 @@ export class SoundFontStudio{
   readonly ctx=new AudioContext({latencyHint:'interactive'});
   private master=this.ctx.createGain();
   private safety=this.ctx.createDynamicsCompressor();
-  private roomL=this.ctx.createDelay(.35);private roomR=this.ctx.createDelay(.35);private roomWetL=this.ctx.createGain();private roomWetR=this.ctx.createGain();
-  private echoL=this.ctx.createDelay(2.5);private echoR=this.ctx.createDelay(2.5);private echoFbL=this.ctx.createGain();private echoFbR=this.ctx.createGain();private echoWetL=this.ctx.createGain();private echoWetR=this.ctx.createGain();private echoFilterL=this.ctx.createBiquadFilter();private echoFilterR=this.ctx.createBiquadFilter();private panL=this.ctx.createStereoPanner();private panR=this.ctx.createStereoPanner();
+  // The time-based effects are intentionally rebuildable. Stopping a note is
+  // not enough to silence DelayNodes: their buffers and feedback can keep
+  // producing room/echo tails after transport and audition voices are gone.
+  private roomL!:DelayNode;private roomR!:DelayNode;private roomWetL!:GainNode;private roomWetR!:GainNode;
+  private echoL!:DelayNode;private echoR!:DelayNode;private echoFbL!:GainNode;private echoFbR!:GainNode;private echoWetL!:GainNode;private echoWetR!:GainNode;private echoFilterL!:BiquadFilterNode;private echoFilterR!:BiquadFilterNode;private panL!:StereoPannerNode;private panR!:StereoPannerNode;
   private synthPromise:Promise<WorkletSynthesizer>|null=null;
   private synth:WorkletSynthesizer|null=null;
   private loadingBanks=new Map<RuntimeBank,Promise<void>>();
@@ -47,14 +50,42 @@ export class SoundFontStudio{
   private generations:Record<PlayBus,number>={transport:0,audition:0};
   private worldId='dreamland';
   private studioKey='';
+  private studioState:StudioState|null=null;
 
   constructor(){
     this.master.gain.value=.8;
     this.safety.threshold.value=-8;this.safety.knee.value=12;this.safety.ratio.value=3;this.safety.attack.value=.008;this.safety.release.value=.18;
     this.master.connect(this.safety);this.safety.connect(this.ctx.destination);
+    this.rebuildFxGraph(false);
+  }
+
+  /**
+   * Replace the actual delay/reverb layer rather than merely turning its gain
+   * down. A fresh graph has empty delay buffers, so a quick stop -> play cannot
+   * resurrect an old echo tail. Existing performer sends are reattached to the
+   * new graph while their dry path remains untouched.
+   */
+  private rebuildFxGraph(reconnectStrips=true){
+    if(reconnectStrips){
+      for(const strip of this.strips.values()){
+        try{strip.room.disconnect();}catch{/* noop */}
+        try{strip.echo.disconnect();}catch{/* noop */}
+      }
+    }
+    const oldNodes:AudioNode[]=[];
+    if(this.roomL)oldNodes.push(this.roomL,this.roomR,this.roomWetL,this.roomWetR,this.echoL,this.echoR,this.echoFbL,this.echoFbR,this.echoWetL,this.echoWetR,this.echoFilterL,this.echoFilterR,this.panL,this.panR);
+    for(const node of oldNodes)try{node.disconnect();}catch{/* noop */}
+
+    this.roomL=this.ctx.createDelay(.35);this.roomR=this.ctx.createDelay(.35);this.roomWetL=this.ctx.createGain();this.roomWetR=this.ctx.createGain();
+    this.echoL=this.ctx.createDelay(2.5);this.echoR=this.ctx.createDelay(2.5);this.echoFbL=this.ctx.createGain();this.echoFbR=this.ctx.createGain();this.echoWetL=this.ctx.createGain();this.echoWetR=this.ctx.createGain();this.echoFilterL=this.ctx.createBiquadFilter();this.echoFilterR=this.ctx.createBiquadFilter();this.panL=this.ctx.createStereoPanner();this.panR=this.ctx.createStereoPanner();
     this.panL.pan.value=-.5;this.panR.pan.value=.5;
+    this.roomWetL.gain.value=0;this.roomWetR.gain.value=0;this.echoWetL.gain.value=0;this.echoWetR.gain.value=0;this.echoFbL.gain.value=0;this.echoFbR.gain.value=0;
     this.roomL.connect(this.panL);this.roomR.connect(this.panR);this.panL.connect(this.roomWetL);this.panR.connect(this.roomWetR);this.roomWetL.connect(this.master);this.roomWetR.connect(this.master);
     this.echoFilterL.type=this.echoFilterR.type='lowpass';this.echoL.connect(this.echoFilterL);this.echoR.connect(this.echoFilterR);this.echoFilterL.connect(this.echoWetL);this.echoFilterR.connect(this.echoWetR);this.echoWetL.connect(this.master);this.echoWetR.connect(this.master);this.echoFilterL.connect(this.echoFbL);this.echoFbL.connect(this.echoR);this.echoFilterR.connect(this.echoFbR);this.echoFbR.connect(this.echoL);
+    if(reconnectStrips){for(const strip of this.strips.values()){strip.room.connect(this.roomL);strip.room.connect(this.roomR);strip.echo.connect(this.echoL);strip.echo.connect(this.echoR);}}
+
+    this.studioKey='';
+    if(this.studioState)this.setStudioState(this.studioState);
   }
 
   unlockFromGesture(){
@@ -139,6 +170,7 @@ export class SoundFontStudio{
   }
 
   setStudioState(state:StudioState){
+    this.studioState=state;
     const key=`${state.worldId}:${state.tempo}`;if(key===this.studioKey)return;this.studioKey=key;
     this.worldId=state.worldId;
     const world=WORLD_MAP[state.worldId as keyof typeof WORLD_MAP]??WORLD_MAP.dreamland,p=world.studio,beat=60/Math.max(50,state.tempo),now=this.ctx.currentTime;
@@ -206,6 +238,15 @@ export class SoundFontStudio{
 
   private stopBus(bus:PlayBus){
     this.generations[bus]++;const now=this.ctx.currentTime;
+    // Transport and audition own disjoint MIDI channel pools. Gate the target
+    // pool at its strip input as well as sending note-offs. This also defeats
+    // noteOns that were already posted to the AudioWorklet a few ms ahead.
+    for(const strip of this.strips.values()){
+      const stripBus=TRANSPORT_CHANNELS.includes(strip.channel)?'transport':'audition';
+      if(stripBus!==bus)continue;
+      try{strip.input.gain.cancelScheduledValues(now);strip.input.gain.setValueAtTime(0,now);}catch{/* noop */}
+      strip.mixKey='';
+    }
     void this.ensureSynth().then(synth=>{
       for(const strip of this.strips.values()){
         const keep:ActiveNote[]=[];
@@ -219,16 +260,20 @@ export class SoundFontStudio{
   stopAudition(){this.stopBus('audition');}
 
   /**
-   * World changes are a true musical boundary. Kill both ownership buses and
-   * invalidate anything still waiting on an async bank/strip preparation.
-   * stopAll is intentionally reserved for this rare boundary; normal pause/
-   * stop keeps audition independent from transport.
+   * Absolute silence boundary: invalidate both ownership buses, kill every
+   * synth voice (including already-scheduled ones), and replace the shared FX
+   * graph so room/echo layers cannot continue after stop/bomb.
    */
   hardStop(){
     this.generations.transport++;this.generations.audition++;
-    for(const strip of this.strips.values())strip.active=[];
+    const now=this.ctx.currentTime;
+    for(const strip of this.strips.values()){
+      strip.active=[];strip.mixKey='';
+      try{strip.input.gain.cancelScheduledValues(now);strip.input.gain.setValueAtTime(0,now);}catch{/* noop */}
+    }
     this.channelSetup.clear();
     try{this.synth?.stopAll(true);}catch{/* a later note can recover normally */}
+    if(this.ctx.state!=='closed')this.rebuildFxGraph();
   }
 
   close(){
