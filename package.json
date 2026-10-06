@@ -1,15 +1,14 @@
 {
   "name": "draw-sounds",
   "private": true,
-  "version": "0.26.0",
+  "version": "0.31.0",
   "homepage": "https://drawsounds.github.io",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit",
-    "postinstall": "node scripts/copy_spessa_worklet.mjs"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

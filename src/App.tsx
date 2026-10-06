@@ -10,7 +10,9 @@ import {
   WORLD_MAP,
   WORLDS,
   WorldId,
+  createGestureStats,
   eraseMarkAt,
+  extendGestureStats,
   freezeMark,
   interpretCanvas,
   interpretMark,
@@ -19,7 +21,7 @@ import {
   recolorFillDataUrl,
 } from './music/canvasMusic';
 
-function initialTransport(): TransportState { return {isPlaying:false,currentTime:0,totalDuration:0,currentSectionIndex:0,activePhraseIds:[]}; }
+function initialTransport(): TransportState { return {isPlaying:false,isPreparing:false,currentTime:0,totalDuration:0}; }
 
 const TOOLS: {id:CanvasTool; label:string}[] = [
   {id:'crayon',label:'Crayon'},
@@ -212,8 +214,8 @@ function StampCardPreview({kind,active,color}:{kind:StampKind;active:boolean;col
   );
 }
 
-function MarkArt({mark,color,ink,active}:{mark:CanvasMark;color:string;ink:string;active:boolean}){
-  const p=mark.points[0]||{x:.5,y:.5},path=pathFrom(mark.points),sw=Math.max(14,22*mark.size),rnd=seeded(mark.seed),cls=`mark mark-${mark.tool} ${active?'is-sounding':''}`;
+const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;color:string;ink:string}){
+  const p=mark.points[0]||{x:.5,y:.5},path=pathFrom(mark.points),sw=Math.max(14,22*mark.size),rnd=seeded(mark.seed),cls=`mark mark-${mark.tool}`;
   if(mark.tool==='fill'){
     if(mark.fillDataUrl){
       return <g className={cls}>
@@ -245,7 +247,7 @@ function MarkArt({mark,color,ink,active}:{mark:CanvasMark;color:string;ink:strin
   return <g className={cls}>
     <CuteStamp kind={kind} cx={cx} cy={cy} r={r} color={color} ink={ink}/>
   </g>;
-}
+});
 
 function FxArt({fx}:{fx:CanvasFx}){
   const rnd=seeded(fx.seed),cx=fx.x*1000,cy=fx.y*700;
@@ -301,9 +303,16 @@ export default function App(){
   const lastLiveAudition=useRef(0);
   const bombTimer=useRef<number|null>(null);
   const activePointerId=useRef<number|null>(null);
+  const draftRef=useRef<CanvasMark|null>(null);
+  const draftFrame=useRef<number|null>(null);
+  const eraseQueue=useRef<CanvasPoint[]>([]);
+  const eraseFrame=useRef<number|null>(null);
+  const hoverRef=useRef<CanvasPoint|null>(null);
+  const hoverFrame=useRef<number|null>(null);
 
   const song=useMemo(()=>interpretCanvas(marks,worldId),[marks,worldId]);
   useEffect(()=>{ if(!world.stamps.some(s=>s.id===stampKind)) setStampKind(world.stamps[0]?.id||'cat'); },[worldId]);
+  useEffect(()=>{transport.prefetchWorld(worldId);},[worldId]);
 
   useEffect(()=>{transport.setSong(song,true,true);},[song]);
   useEffect(()=>transport.subscribe(setState),[]);
@@ -333,9 +342,40 @@ export default function App(){
 
   const pointFromEvent=(e:React.PointerEvent<SVGSVGElement>):CanvasPoint=>{const r=e.currentTarget.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};};
   const addEffect=useCallback((mark:CanvasMark,kind:CanvasFx['kind'])=>{const p=mark.points[mark.points.length-1]||mark.points[0]||{x:.5,y:.5};const sound=WORLD_MAP[worldId].palette[mark.paletteIndex%WORLD_MAP[worldId].palette.length];const fx={id:`fx_${Date.now()}_${Math.random()}`,x:p.x,y:p.y,color:sound.color,ink:sound.ink,kind,seed:mark.seed,stampKind:mark.stampKind};setEffects(prev=>[...prev.slice(-10),fx]);window.setTimeout(()=>setEffects(prev=>prev.filter(x=>x.id!==fx.id)),650);},[worldId]);
-  const audition=useCallback((mark:CanvasMark,live=false)=>{transport.auditionPhrase(interpretMark(mark,worldId),live);},[worldId]);
+  const audition=useCallback((mark:CanvasMark,live=false,onset=false)=>{transport.auditionPhrase(interpretMark(mark,worldId),live,onset);},[worldId]);
   const commit=useCallback((mark:CanvasMark,kind:CanvasFx['kind'])=>{const frozen=freezeMark(mark,worldId);setMarks(prev=>[...prev,frozen]);audition(frozen,false);addEffect(frozen,kind);},[addEffect,audition,worldId]);
-  const eraseAt=useCallback((p:CanvasPoint)=>{setMarks(prev=>prev.map(mark=>eraseMarkAt(mark,p,worldId,.050)).filter((mark):mark is CanvasMark=>Boolean(mark)));},[worldId]);
+
+  const publishDraft=useCallback((mark:CanvasMark|null,immediate=false)=>{
+    draftRef.current=mark;
+    if(immediate){
+      if(draftFrame.current!==null){cancelAnimationFrame(draftFrame.current);draftFrame.current=null;}
+      setDraft(mark?{...mark,points:[...mark.points],gesture:mark.gesture?{...mark.gesture}:undefined}:null);return;
+    }
+    if(draftFrame.current!==null)return;
+    draftFrame.current=requestAnimationFrame(()=>{draftFrame.current=null;const value=draftRef.current;setDraft(value?{...value,points:[...value.points]}:null);});
+  },[]);
+
+  const publishHover=useCallback((point:CanvasPoint|null,immediate=false)=>{
+    hoverRef.current=point;
+    if(immediate){if(hoverFrame.current!==null){cancelAnimationFrame(hoverFrame.current);hoverFrame.current=null;}setHoverPoint(point);return;}
+    if(hoverFrame.current!==null)return;
+    hoverFrame.current=requestAnimationFrame(()=>{hoverFrame.current=null;setHoverPoint(hoverRef.current);});
+  },[]);
+
+  const flushErase=useCallback(()=>{
+    if(eraseFrame.current!==null){cancelAnimationFrame(eraseFrame.current);eraseFrame.current=null;}
+    const points=eraseQueue.current.splice(0);if(!points.length)return;
+    setMarks(prev=>{
+      let next=prev;
+      for(const p of points)next=next.map(mark=>eraseMarkAt(mark,p,worldId,.050)).filter((mark):mark is CanvasMark=>Boolean(mark));
+      return next;
+    });
+  },[worldId]);
+  const eraseAt=useCallback((p:CanvasPoint)=>{
+    eraseQueue.current.push(p);
+    if(eraseFrame.current!==null)return;
+    eraseFrame.current=requestAnimationFrame(()=>{eraseFrame.current=null;flushErase();});
+  },[flushErase]);
 
   const cancelBomb=useCallback(()=>{if(bombTimer.current!==null){window.clearTimeout(bombTimer.current);bombTimer.current=null;}setBombState(state=>state==='boom'?state:'idle');},[]);
   const startBomb=useCallback(()=>{
@@ -343,11 +383,16 @@ export default function App(){
     setBombState('arming');
     bombTimer.current=window.setTimeout(()=>{
       bombTimer.current=null;setBombState('boom');transport.stop();
-      window.setTimeout(()=>{setMarks([]);setDraft(null);setEffects([]);},160);
+      window.setTimeout(()=>{setMarks([]);publishDraft(null,true);setEffects([]);},160);
       window.setTimeout(()=>setBombState('idle'),650);
     },1000);
-  },[marks.length,bombState]);
-  useEffect(()=>()=>{if(bombTimer.current!==null)window.clearTimeout(bombTimer.current);},[]);
+  },[marks.length,bombState,publishDraft]);
+  useEffect(()=>()=>{
+    if(bombTimer.current!==null)window.clearTimeout(bombTimer.current);
+    if(draftFrame.current!==null)cancelAnimationFrame(draftFrame.current);
+    if(eraseFrame.current!==null)cancelAnimationFrame(eraseFrame.current);
+    if(hoverFrame.current!==null)cancelAnimationFrame(hoverFrame.current);
+  },[]);
 
   const pointerDown=(e:React.PointerEvent<SVGSVGElement>)=>{
     const p=pointFromEvent(e);
@@ -357,9 +402,9 @@ export default function App(){
     // iOS/iPadOS Safari and iOS Chrome require Web Audio to be unlocked by
     // the same real user gesture that starts the interaction. Do this before
     // any async SoundFont/worklet loading or later pointermove audition.
-    transport.unlockAudio();
+    transport.unlockAudio(worldId,paletteIndex);
     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit touch capture is enough */}
-    setHoverPoint(p);
+    if(e.pointerType!=='touch')publishHover(p,true);
     if(tool==='eraser'){eraseAt(p);return;}
     if(tool==='fill'){
       const sound=world.palette[paletteIndex%world.palette.length];
@@ -374,45 +419,55 @@ export default function App(){
         fillDataUrl:result.fillDataUrl,
         fillMaskDataUrl:result.fillMaskDataUrl,
         bounds:result.bounds,
+        gesture:createGestureStats(p),
       };
       const frozen=freezeMark(next,worldId);
       setMarks(prev=>[...prev,frozen]);
       audition(frozen,false);
       addEffect(next,'fill');
-      setDraft(null);
+      publishDraft(null,true);
       return;
     }
-    const next:CanvasMark={id:`m_${Date.now()}_${Math.floor(Math.random()*1e5)}`,paletteIndex,tool,points:[p],size:.86+Math.random()*.26,seed:Math.floor(Math.random()*1e9),stampKind:tool==='stamp'?stampKind:undefined};
-    if(tool==='stamp'||tool==='boom'){commit(next,tool==='boom'?'boom':'stamp');setDraft(null);return;}
-    setDraft(next);lastLiveAudition.current=performance.now()-1000;
+    const next:CanvasMark={id:`m_${Date.now()}_${Math.floor(Math.random()*1e5)}`,paletteIndex,tool,points:[p],size:.86+Math.random()*.26,seed:Math.floor(Math.random()*1e9),stampKind:tool==='stamp'?stampKind:undefined,gesture:createGestureStats(p)};
+    if(tool==='stamp'||tool==='boom'){commit(next,tool==='boom'?'boom':'stamp');publishDraft(null,true);return;}
+    publishDraft(next,true);audition(next,true,true);lastLiveAudition.current=performance.now();
   };
   const pointerMove=(e:React.PointerEvent<SVGSVGElement>)=>{
-    const p=pointFromEvent(e);setHoverPoint(p);
+    const p=pointFromEvent(e);if(e.pointerType!=='touch')publishHover(p);
     const isDrawing=activePointerId.current===e.pointerId;
     if(tool==='eraser'&&isDrawing){eraseAt(p);return;}
-    if(!draft||!isDrawing)return;
-    const last=draft.points[draft.points.length-1],min=draft.tool==='dots'?.034:draft.tool==='spray'?.019:.012;if(Math.hypot(last.x-p.x,last.y-p.y)<min)return;
-    const next={...draft,points:[...draft.points,p]};setDraft(next);
+    const current=draftRef.current;
+    if(!current||!isDrawing)return;
+    const last=current.points[current.points.length-1],min=current.tool==='dots'?.034:current.tool==='spray'?.019:.012;if(Math.hypot(last.x-p.x,last.y-p.y)<min)return;
+    // Pointer events can arrive at 120Hz+ on phones. Keep the complete stroke in
+    // a ref for musical accuracy, but publish it to React at most once per frame.
+    current.points.push(p);
+    current.gesture=extendGestureStats(current.gesture??createGestureStats(current.points[0]),p);
+    const next=current;publishDraft(next);
     const now=performance.now();
     const role=world.palette[next.paletteIndex%world.palette.length]?.role;
     const heavyLine=next.tool==='crayon'&&(role==='bass'||role==='harmony');
     const interval=heavyLine?145:next.tool==='crayon'?90:next.tool==='dots'?100:112;
     if(now-lastLiveAudition.current>interval){
-      const tiny={...next,id:`live_${next.id}`,points:next.points.slice(heavyLine?-2:-5)};
+      const tiny={...next,id:`live_${next.id}`,points:next.points.slice(heavyLine?-2:-5),gesture:undefined};
       audition(tiny,true);lastLiveAudition.current=now;
     }
   };
   const pointerUp=(e:React.PointerEvent<SVGSVGElement>)=>{
     if(activePointerId.current!==e.pointerId)return;
     // Retry on release as a defensive WebKit path after a drag gesture.
-    transport.unlockAudio();
+    transport.unlockAudio(worldId,paletteIndex);
+    if(tool==='eraser')flushErase();
+    if(e.pointerType==='touch')publishHover(null,true);
     activePointerId.current=null;
     try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* noop */}
-    if(draft){commit(draft,'scribble');setDraft(null);}
+    const finalDraft=draftRef.current;
+    if(finalDraft){commit(finalDraft,'scribble');publishDraft(null,true);}
   };
 
   const chooseWorld=(id:WorldId)=>{
     transport.stop();
+    transport.unlockAudio(id,0);
     setWorldId(id);
     setShowWorlds(false);
     setPaletteIndex(0);
@@ -421,15 +476,14 @@ export default function App(){
       if(m.tool==='fill'&&m.fillMaskDataUrl){
         const sound=WORLD_MAP[id].palette[m.paletteIndex%WORLD_MAP[id].palette.length];
         const newUrl=recolorFillDataUrl(m.fillMaskDataUrl,sound.color);
-        return {...m,fillDataUrl:newUrl,frozenWorldId:id};
+        return {...m,fillDataUrl:newUrl};
       }
       return m;
     }));
   };
   const undo=()=>{setMarks(prev=>prev.slice(0,-1));};
   const progress=song.totalDuration?Math.max(0,Math.min(1,state.currentTime/song.totalDuration)):0;
-  const rawDisplayMarks=draft?[...marks,draft]:marks,displayMarks=[...rawDisplayMarks].sort((a,b)=>(a.tool==='fill'?0:1)-(b.tool==='fill'?0:1)),palette=world.palette;
-  const activeIds=useMemo(()=>{if(!state.isPlaying)return new Set<string>();const set=new Set<string>();displayMarks.forEach(m=>{const b=markBounds(m);if(progress>=b.minX-.008&&progress<=b.maxX+.012)set.add(m.id);});return set;},[displayMarks,progress,state.isPlaying]);
+  const displayMarks=useMemo(()=>{const raw=draft?[...marks,draft]:marks;return [...raw].sort((a,b)=>(a.tool==='fill'?0:1)-(b.tool==='fill'?0:1));},[marks,draft]),palette=world.palette;
 
   return <div className={`paint-app world-${worldId}`} style={{'--canvas':world.canvas,'--ink':world.canvasInk,'--accent':world.accent} as React.CSSProperties} onPointerDownCapture={e=>{if(bombState==='arming' && !(e.target as HTMLElement).closest('.bomb-reset')) cancelBomb();}}>
     <header className="tiny-topbar">
@@ -444,9 +498,9 @@ export default function App(){
       <div className={`music-paper ${marks.length?'has-marks':''} ${state.isPlaying?'playing':''}`}>
         {bombState==='boom'&&<div className="reset-boom" aria-hidden="true"><b>✹</b><i/><i/><i/><i/><i/><i/></div>}
         {!marks.length&&!draft&&<div className="empty-whisper" aria-hidden="true"><i/><span>draw something noisy</span><i/></div>}
-        <svg className="music-canvas" viewBox="0 0 1000 700" preserveAspectRatio="none" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onLostPointerCapture={pointerUp} onPointerLeave={e=>{if(activePointerId.current!==e.pointerId)setHoverPoint(null);}}>
+        <svg className="music-canvas" viewBox="0 0 1000 700" preserveAspectRatio="none" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onLostPointerCapture={pointerUp} onPointerLeave={e=>{if(activePointerId.current!==e.pointerId)publishHover(null,true);}}>
           <rect width="1000" height="700" fill="transparent"/>
-          {displayMarks.map(mark=>{const sound=palette[mark.paletteIndex%palette.length],maskId=`erase_${mark.id.replace(/[^a-zA-Z0-9_]/g,'_')}`;return <g key={mark.id}>{mark.erasures?.length?<defs><mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="700"><rect width="1000" height="700" fill="white"/>{mark.erasures.map((hole,i)=><ellipse key={i} cx={hole.x*1000} cy={hole.y*700} rx={(hole.radius??.05)*820} ry={(hole.radius??.05)*700} fill="black"/>)}</mask></defs>:null}<g mask={mark.erasures?.length?`url(#${maskId})`:undefined}><MarkArt mark={mark} color={sound.color} ink={sound.ink} active={activeIds.has(mark.id)}/></g></g>;})}
+          {displayMarks.map(mark=>{const sound=palette[mark.paletteIndex%palette.length],maskId=`erase_${mark.id.replace(/[^a-zA-Z0-9_]/g,'_')}`;return <g key={mark.id}>{mark.erasures?.length?<defs><mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="700"><rect width="1000" height="700" fill="white"/>{mark.erasures.map((hole,i)=><ellipse key={i} cx={hole.x*1000} cy={hole.y*700} rx={(hole.radius??.05)*820} ry={(hole.radius??.05)*700} fill="black"/>)}</mask></defs>:null}<g mask={mark.erasures?.length?`url(#${maskId})`:undefined}><MarkArt mark={mark} color={sound.color} ink={sound.ink}/></g></g>;})}
           {effects.map(fx=><FxArt key={fx.id} fx={fx}/>)}
           {hoverPoint&&tool!=='eraser'&&<circle className="brush-cursor" cx={hoverPoint.x*1000} cy={hoverPoint.y*700} r={tool==='boom'?35:tool==='stamp'?29:tool==='fill'?24:12} fill={palette[paletteIndex%palette.length].color}/>} 
           {hoverPoint&&tool==='eraser'&&<g className="eraser-cursor"><circle cx={hoverPoint.x*1000} cy={hoverPoint.y*700} r="36"/><path d={`M ${hoverPoint.x*1000-15} ${hoverPoint.y*700+8} l 30 -16`}/></g>}
@@ -462,6 +516,7 @@ export default function App(){
             <button
               key={`${worldId}_${i}`}
               className={`paint-pot ${paletteIndex===i?'active':''}`}
+              onPointerDown={()=>transport.preparePalette(worldId,i)}
               onClick={()=>{
                 setPaletteIndex(i);
                 if(tool==='eraser')setTool('crayon');
@@ -521,11 +576,13 @@ export default function App(){
       )}
 
       <div className="play-row">
-        <button className={`giant-play ${state.isPlaying?'is-playing':''}`} onPointerDown={()=>transport.unlockAudio()} onClick={()=>marks.length?transport.togglePlay():undefined} disabled={!marks.length} aria-label={state.isPlaying?'Pause drawing':'Play drawing'}>
+        <button className={`giant-play ${state.isPlaying?'is-playing':''} ${state.isPreparing?'is-preparing':''} ${state.audioError?'has-audio-error':''}`} onPointerDown={()=>transport.unlockAudio(worldId,paletteIndex)} onClick={()=>marks.length?transport.togglePlay():undefined} disabled={!marks.length} aria-label={state.audioError?'SoundFont failed to load. Tap to retry':state.isPreparing?'Preparing sounds':state.isPlaying?'Pause drawing':'Play drawing'} title={state.audioError??undefined}>
           {state.isPlaying?<Pause size={27} fill="currentColor"/>:<Play size={29} fill="currentColor"/>}
         </button>
-        <div className="transport-scrub">
-          <input aria-label="Move through your drawing" type="range" min="0" max="1000" step="1" value={Math.round(progress*1000)} style={{'--seek-fill':`${progress*100}%`} as React.CSSProperties} onChange={e=>transport.seek((Number(e.target.value)/1000)*song.totalDuration)} disabled={!marks.length}/>
+        <div className={`transport-scrub ${state.audioError?'has-error':''}`}>
+          {state.audioError
+            ? <button className="soundfont-retry" type="button" onPointerDown={()=>transport.unlockAudio(worldId,paletteIndex)} onClick={()=>transport.togglePlay()} title={state.audioError}>Sound unavailable · retry</button>
+            : <input aria-label="Move through your drawing" type="range" min="0" max="1000" step="1" value={Math.round(progress*1000)} style={{'--seek-fill':`${progress*100}%`} as React.CSSProperties} onChange={e=>transport.seek((Number(e.target.value)/1000)*song.totalDuration)} disabled={!marks.length}/>}
         </div>
         <button className="world-pill" onClick={()=>setShowWorlds(true)} aria-label={`Change world. Current world ${world.label}`}><span className="world-dots">{palette.slice(0,3).map((c,i)=><i key={i} style={{background:c.color}}/>)}</span><b>{world.label}</b><small>swap</small></button>
       </div>

@@ -1,27 +1,10 @@
-# Aura SoundFonts
+# DrawSounds runtime audio
 
-Aura v0.26 uses local **SF3** files as its audible instrument sources. SF3 keeps the SoundFont structure while storing samples as Ogg/Vorbis, which dramatically reduces the desktop bundle size.
+The app ships exactly two SoundFonts:
 
-## General / creative banks
-- `TimGM6mb.sf3` — compact GM fallback and general palette.
-- `Aura-Oddities.sf3` — Weird Cabinet.
+- `drawsounds-instruments.sf3` — every pitched/tonal preset DrawSounds can address.
+- `drawsounds-percussion.sf3` — the three percussion presets DrawSounds can address.
 
-## Specialist banks
-- `Aura-Bandoneon.sf3` — Jörg Bleymehl / Bandonberry bandoneon_v2 source; recorded 1930 ELA bandoneon.
-- `Aura-NylonGuitar.sf3` — FreePats Spanish classical guitar; CC0.
-- `Aura-FlamencoStrum-DrJass.sf3` — alternate Flamenco strum source supplied for the project.
-- `Aura-FingerBass.sf3` — FreePats Finger Bass YR; CC0.
-- `Aura-WorldPercussion.sf3` — FreePats World Percussion; CC0.
-- `Aura-CleanGuitar.sf3` — FreePats clean Fender electric guitar; CC0.
+The banks are purpose-built runtime assets. Unreachable source presets, key zones, velocity layers, and samples are not shipped. Runtime code addresses stable `sound` IDs that map directly to these preset numbers; there is no GM fallback or alternate synthesis path.
 
-## Quality banks
-The `optional/` folder name is retained for path compatibility, but these banks are bundled in this build:
-- `UprightPianoKW-small.sf3`
-- `TenorSaxophone-small.sf3`
-- `ConcertHarp-small.sf3`
-- `TubularBells-small.sf3`
-- `Ocarina.sf3`
-- `LatelyBass.sf3`
-- `MuldjordKit.sf3`
-
-Every shipped SF3 is below Aura's 25 MiB per-bank limit. See `SOUNDFONT-SF3.md` and `licenses/` for size/provenance details.
+Third-party source notices are consolidated in `THIRD_PARTY_LICENSES.txt`.
