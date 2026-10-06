@@ -7,7 +7,7 @@ import { WORLD_MAP, WORLDS } from './worlds/config';
 export type { CanvasMark, CanvasPoint, CanvasTool, DrawTool, StampKind, WorldConfig, WorldId } from './canvasTypes';
 export { WORLD_MAP, WORLDS } from './worlds/config';
 export { createGestureStats, extendGestureStats } from './phraseEngine';
-export { performFloodFill, cacheFillMask, recolorFillDataUrl } from './floodFill';
+export { performFloodFill } from './floodFill';
 
 function totalDuration(w:WorldConfig){return w.totalBeats*60/w.tempo;}
 

@@ -47,10 +47,10 @@ button:disabled,input:disabled{opacity:.32;cursor:not-allowed}
 
 .stamp-tray{display:flex;align-items:center;justify-content:flex-start;gap:7px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 4px 8px;max-width:800px;margin:0 auto;width:100%;animation:tray-in .16s ease-out}
 .stamp-tray::-webkit-scrollbar{display:none}
-.stamp-tray button{flex:0 0 54px;width:54px;height:54px;border:1.5px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:16px;background:color-mix(in srgb,var(--canvas) 65%,white 35%);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;box-shadow:0 2px 4px color-mix(in srgb,var(--ink) 7%,transparent);touch-action:manipulation;transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;color:var(--ink)}
+.stamp-tray button{flex:0 0 54px;width:54px;height:54px;border:1.5px solid transparent;border-radius:16px;background:transparent;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;box-shadow:none;touch-action:manipulation;transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease;color:var(--ink)}
 .stamp-tray button:active{transform:scale(.94)}
-.stamp-tray button.active{background:var(--ink);color:var(--canvas);border-color:var(--ink);transform:scale(1.06);box-shadow:0 4px 14px color-mix(in srgb,var(--ink) 25%,transparent)}
-.stamp-preview-svg{display:block;pointer-events:none}
+.stamp-tray button.active{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);border-color:color-mix(in srgb,var(--ink) 28%,transparent);transform:scale(1.03);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--canvas) 35%,transparent)}
+.stamp-preview-svg{display:block;pointer-events:none;overflow:visible}
 @keyframes tray-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 .canvas-fx{pointer-events:none;transform-box:fill-box;transform-origin:center}.fx-boom{animation:fx-boom .62s cubic-bezier(.16,.8,.2,1) forwards}.fx-stamp{animation:fx-stamp .58s ease-out forwards}.fx-scribble{animation:fx-scribble .5s ease-out forwards}.fx-fill{animation:fx-fill .65s cubic-bezier(.12,.8,.2,1) forwards}

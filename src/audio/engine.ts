@@ -56,10 +56,23 @@ class Transport {
   }
 
   setSong(song:Song,preservePosition=false,preserveAudition=false){
+    const previousWorld=this.song?.worldId;
+    const worldChanged=Boolean(previousWorld&&previousWorld!==song.worldId);
     const oldTime=this.currentTime(),oldScheduledTo=this.scheduledTo;
+
+    // A new world is not an edit to the current performance. It is a hard
+    // musical boundary: cancel prepare/play races, stop both buses, reset the
+    // clock and never preserve notes from the old orchestration.
+    if(worldChanged){
+      this.playRequest++;this.preparing=false;this.playing=false;this.clearLoops();
+      this.pausedAt=0;this.scheduledTo=0;this.nextEventIndex=0;
+      this.studio?.hardStop();
+    }
+
     this.song=song;
     this.rebuildTimeline(song);
-    const pos=preservePosition?Math.min(song.totalDuration,oldTime):0;
+    const canPreserve=preservePosition&&!worldChanged;
+    const pos=canPreserve?Math.min(song.totalDuration,oldTime):0;
     this.pausedAt=pos;
     this.studio?.setStudioState({worldId:song.worldId,tempo:song.baseTempo});
 
@@ -73,7 +86,8 @@ class Transport {
     }else{
       this.scheduledTo=pos;
       this.nextEventIndex=this.lowerBound(pos);
-      if(!preserveAudition)this.studio?.stopTransport();
+      if(!preserveAudition||worldChanged)this.studio?.stopAudition();
+      this.studio?.stopTransport();
     }
     this.emit();
   }
@@ -130,6 +144,18 @@ class Transport {
     this.emit();
   }
 
+  hardStop(reset=true){
+    this.playRequest++;
+    this.preparing=false;
+    this.pausedAt=reset?0:this.currentTime();
+    this.playing=false;
+    this.clearLoops();
+    this.scheduledTo=this.pausedAt;
+    this.nextEventIndex=this.lowerBound(this.pausedAt);
+    this.studio?.hardStop();
+    this.emit();
+  }
+
   stop(reset=true){
     this.playRequest++;
     this.preparing=false;
@@ -175,7 +201,7 @@ class Transport {
       events=ordered.filter(e=>e.timeOffset-first<=1.8).slice(0,18);
     }
     const first=Math.min(...events.map(e=>e.timeOffset)),start=this.studio!.ctx.currentTime+.008;
-    for(const e of events)this.studio!.playNote({...e,timeOffset:e.timeOffset-first,duration:live?Math.min(.45,e.duration):e.duration},start+Math.max(0,e.timeOffset-first),'audition');
+    for(const e of events)this.studio!.playNote({...e,timeOffset:e.timeOffset-first,duration:live?Math.min(1.25,e.duration):e.duration},start+Math.max(0,e.timeOffset-first),'audition');
   }
 
   private schedule(){

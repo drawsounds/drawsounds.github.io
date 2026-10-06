@@ -18,7 +18,6 @@ import {
   interpretMark,
   performFloodFill,
   randomWorld,
-  recolorFillDataUrl,
 } from './music/canvasMusic';
 
 function initialTransport(): TransportState { return {isPlaying:false,isPreparing:false,currentTime:0,totalDuration:0}; }
@@ -53,9 +52,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <circle cx={cx-r*.38} cy={cy+r*.22} r={r*.13} fill={ink} opacity=".15"/>
       <circle cx={cx+r*.38} cy={cy+r*.22} r={r*.13} fill={ink} opacity=".15"/>
       <circle cx={cx-r*.24} cy={cy-r*.06} r={r*.085} fill={ink}/>
-      <circle cx={cx-r*.21} cy={cy-r*.09} r={r*.03} fill="#fff"/>
+      <circle cx={cx-r*.21} cy={cy-r*.09} r={r*.03} fill={color}/>
       <circle cx={cx+r*.24} cy={cy-r*.06} r={r*.085} fill={ink}/>
-      <circle cx={cx+r*.27} cy={cy-r*.09} r={r*.03} fill="#fff"/>
+      <circle cx={cx+r*.27} cy={cy-r*.09} r={r*.03} fill={color}/>
       <polygon points={`${cx-r*.07},${cy+r*.10} ${cx+r*.07},${cy+r*.10} ${cx},${cy+r*.18}`} fill={ink}/>
       <path d={`M ${cx-r*.14} ${cy+r*.25} Q ${cx-r*.07} ${cy+r*.34} ${cx} ${cy+r*.24} Q ${cx+r*.07} ${cy+r*.34} ${cx+r*.14} ${cy+r*.25}`} fill="none" stroke={ink} strokeWidth={Math.max(1.8,r*.05)} strokeLinecap="round"/>
       {[-1,1].map(side=><g key={side}>
@@ -74,9 +73,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <circle cx={cx-r*.38} cy={cy+r*.28} r={r*.14} fill={ink} opacity=".18"/>
       <circle cx={cx+r*.38} cy={cy+r*.28} r={r*.14} fill={ink} opacity=".18"/>
       <ellipse cx={cx-r*.24} cy={cy+r*.05} rx={r*.08} ry={r*.10} fill={ink}/>
-      <circle cx={cx-r*.21} cy={cy+r*.01} r={r*.035} fill="#fff"/>
+      <circle cx={cx-r*.21} cy={cy+r*.01} r={r*.035} fill={color}/>
       <ellipse cx={cx+r*.24} cy={cy+r*.05} rx={r*.08} ry={r*.10} fill={ink}/>
-      <circle cx={cx+r*.27} cy={cy+r*.01} r={r*.035} fill="#fff"/>
+      <circle cx={cx+r*.27} cy={cy+r*.01} r={r*.035} fill={color}/>
       <ellipse cx={cx} cy={cy+r*.20} rx={r*.07} ry={r*.05} fill={ink}/>
       <path d={`M ${cx-r*.12} ${cy+r*.30} Q ${cx-r*.06} ${cy+r*.38} ${cx} ${cy+r*.28} Q ${cx+r*.06} ${cy+r*.38} ${cx+r*.12} ${cy+r*.30}`} fill="none" stroke={ink} strokeWidth={Math.max(1.8,r*.05)} strokeLinecap="round"/>
     </g>;
@@ -92,9 +91,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <ellipse cx={cx} cy={cy+r*.18} rx={r*.11} ry={r*.08} fill={ink}/>
       <path d={`M ${cx} ${cy+r*.25} L ${cx} ${cy+r*.34} M ${cx-r*.12} ${cy+r*.33} Q ${cx} ${cy+r*.44} ${cx+r*.12} ${cy+r*.33}`} fill="none" stroke={ink} strokeWidth={Math.max(1.8,r*.05)} strokeLinecap="round"/>
       <circle cx={cx-r*.25} cy={cy} r={r*.085} fill={ink}/>
-      <circle cx={cx-r*.22} cy={cy-r*.03} r={r*.03} fill="#fff"/>
+      <circle cx={cx-r*.22} cy={cy-r*.03} r={r*.03} fill={color}/>
       <circle cx={cx+r*.25} cy={cy} r={r*.085} fill={ink}/>
-      <circle cx={cx+r*.28} cy={cy-r*.03} r={r*.03} fill="#fff"/>
+      <circle cx={cx+r*.28} cy={cy-r*.03} r={r*.03} fill={color}/>
       <circle cx={cx-r*.38} cy={cy+r*.22} r={r*.12} fill={ink} opacity=".15"/>
       <circle cx={cx+r*.38} cy={cy+r*.22} r={r*.12} fill={ink} opacity=".15"/>
     </g>;
@@ -105,9 +104,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <circle cx={cx+r*.40} cy={cy-r*.28} r={r*.30} fill={color}/>
       <ellipse cx={cx} cy={cy+r*.18} rx={r*.75} ry={r*.54} fill={color}/>
       <circle cx={cx-r*.40} cy={cy-r*.28} r={r*.14} fill={ink}/>
-      <circle cx={cx-r*.36} cy={cy-r*.32} r={r*.05} fill="#fff"/>
+      <circle cx={cx-r*.36} cy={cy-r*.32} r={r*.05} fill={color}/>
       <circle cx={cx+r*.40} cy={cy-r*.28} r={r*.14} fill={ink}/>
-      <circle cx={cx+r*.44} cy={cy-r*.32} r={r*.05} fill="#fff"/>
+      <circle cx={cx+r*.44} cy={cy-r*.32} r={r*.05} fill={color}/>
       <circle cx={cx-r*.07} cy={cy+r*.08} r={r*.025} fill={ink} opacity=".6"/>
       <circle cx={cx+r*.07} cy={cy+r*.08} r={r*.025} fill={ink} opacity=".6"/>
       <path d={`M ${cx-r*.44} ${cy+r*.18} Q ${cx} ${cy+r*.55} ${cx+r*.44} ${cy+r*.18}`} fill="none" stroke={ink} strokeWidth={Math.max(2.2,r*.065)} strokeLinecap="round"/>
@@ -122,9 +121,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <circle cx={cx} cy={cy+r*.08} r={r*.66} fill={color}/>
       <g transform={`rotate(-18 ${cx-r*.26} ${cy-r*.02})`}><ellipse cx={cx-r*.26} cy={cy-r*.02} rx={r*.16} ry={r*.22} fill={ink}/></g>
       <g transform={`rotate(18 ${cx+r*.26} ${cy-r*.02})`}><ellipse cx={cx+r*.26} cy={cy-r*.02} rx={r*.16} ry={r*.22} fill={ink}/></g>
-      <circle cx={cx-r*.23} cy={cy-r*.02} r={r*.06} fill="#fff"/>
+      <circle cx={cx-r*.23} cy={cy-r*.02} r={r*.06} fill={color}/>
       <circle cx={cx-r*.21} cy={cy-r*.02} r={r*.03} fill={ink}/>
-      <circle cx={cx+r*.23} cy={cy-r*.02} r={r*.06} fill="#fff"/>
+      <circle cx={cx+r*.23} cy={cy-r*.02} r={r*.06} fill={color}/>
       <circle cx={cx+r*.21} cy={cy-r*.02} r={r*.03} fill={ink}/>
       <ellipse cx={cx} cy={cy+r*.20} rx={r*.11} ry={r*.07} fill={ink}/>
       <path d={`M ${cx-r*.12} ${cy+r*.32} Q ${cx-r*.05} ${cy+r*.40} ${cx} ${cy+r*.28} Q ${cx+r*.05} ${cy+r*.40} ${cx+r*.12} ${cy+r*.32}`} fill="none" stroke={ink} strokeWidth={Math.max(1.8,r*.05)} strokeLinecap="round"/>
@@ -144,9 +143,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <path d={`M ${cx-r*.14} ${cy+r*.28} Q ${cx} ${cy+r*.38} ${cx+r*.14} ${cy+r*.28}`} fill="none" stroke={ink} strokeWidth={Math.max(1.8,r*.05)} strokeLinecap="round"/>
       <path d={`M ${cx-r*.06} ${cy+r*.32} Q ${cx} ${cy+r*.48} ${cx+r*.06} ${cy+r*.32} Z`} fill={ink} opacity=".4"/>
       <ellipse cx={cx-r*.22} cy={cy-r*.02} rx={r*.085} ry={r*.10} fill={ink}/>
-      <circle cx={cx-r*.19} cy={cy-r*.05} r={r*.035} fill="#fff"/>
+      <circle cx={cx-r*.19} cy={cy-r*.05} r={r*.035} fill={color}/>
       <ellipse cx={cx+r*.22} cy={cy-r*.02} rx={r*.085} ry={r*.10} fill={ink}/>
-      <circle cx={cx+r*.25} cy={cy-r*.05} r={r*.035} fill="#fff"/>
+      <circle cx={cx+r*.25} cy={cy-r*.05} r={r*.035} fill={color}/>
     </g>;
   }
   if(kind==='chick'){
@@ -156,9 +155,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <path d={`M ${cx-r*.58} ${cy+r*.12} Q ${cx-r*.78} ${cy+r*.32} ${cx-r*.52} ${cy+r*.44}`} fill="none" stroke={ink} strokeWidth={Math.max(2,r*.06)} strokeLinecap="round"/>
       <path d={`M ${cx+r*.58} ${cy+r*.12} Q ${cx+r*.78} ${cy+r*.32} ${cx+r*.52} ${cy+r*.44}`} fill="none" stroke={ink} strokeWidth={Math.max(2,r*.06)} strokeLinecap="round"/>
       <circle cx={cx-r*.24} cy={cy+r*.02} r={r*.085} fill={ink}/>
-      <circle cx={cx-r*.21} cy={cy-r*.02} r={r*.03} fill="#fff"/>
+      <circle cx={cx-r*.21} cy={cy-r*.02} r={r*.03} fill={color}/>
       <circle cx={cx+r*.24} cy={cy+r*.02} r={r*.085} fill={ink}/>
-      <circle cx={cx+r*.27} cy={cy-r*.02} r={r*.03} fill="#fff"/>
+      <circle cx={cx+r*.27} cy={cy-r*.02} r={r*.03} fill={color}/>
       <polygon points={`${cx-r*.12},${cy+r*.14} ${cx+r*.12},${cy+r*.14} ${cx},${cy+r*.30}`} fill={ink}/>
       <circle cx={cx-r*.38} cy={cy+r*.20} r={r*.12} fill={ink} opacity=".2"/>
       <circle cx={cx+r*.38} cy={cy+r*.20} r={r*.12} fill={ink} opacity=".2"/>
@@ -171,9 +170,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <polygon points={`${cx+r*.52},${cy-r*.36} ${cx+r*.56},${cy-r*.84} ${cx+r*.32},${cy-r*.48}`} fill={ink} opacity=".28"/>
       <polygon points={`${cx-r*.08},${cy+r*.48} ${cx+r*.08},${cy+r*.48} ${cx},${cy+r*.58}`} fill={ink}/>
       <ellipse cx={cx-r*.24} cy={cy+r*.05} rx={r*.08} ry={r*.07} fill={ink}/>
-      <circle cx={cx-r*.22} cy={cy+r*.03} r={r*.025} fill="#fff"/>
+      <circle cx={cx-r*.22} cy={cy+r*.03} r={r*.025} fill={color}/>
       <ellipse cx={cx+r*.24} cy={cy+r*.05} rx={r*.08} ry={r*.07} fill={ink}/>
-      <circle cx={cx+r*.26} cy={cy+r*.03} r={r*.025} fill="#fff"/>
+      <circle cx={cx+r*.26} cy={cy+r*.03} r={r*.025} fill={color}/>
       <circle cx={cx-r*.38} cy={cy+r*.26} r={r*.11} fill={ink} opacity=".18"/>
       <circle cx={cx+r*.38} cy={cy+r*.26} r={r*.11} fill={ink} opacity=".18"/>
     </g>;
@@ -183,9 +182,9 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
       <ellipse cx={cx} cy={cy+r*.1} rx={r*.65} ry={r*.68} fill={color}/>
       <path d={`M ${cx} ${cy-r*.22} Q ${cx-r*.35} ${cy-r*.20} ${cx-r*.44} ${cy+r*.18} Q ${cx-r*.36} ${cy+r*.62} ${cx} ${cy+r*.66} Q ${cx+r*.36} ${cy+r*.62} ${cx+r*.44} ${cy+r*.18} Q ${cx+r*.35} ${cy-r*.20} ${cx} ${cy-r*.22} Z`} fill={ink} opacity=".16"/>
       <circle cx={cx-r*.22} cy={cy+r*.04} r={r*.08} fill={ink}/>
-      <circle cx={cx-r*.19} cy={cy+r*.01} r={r*.03} fill="#fff"/>
+      <circle cx={cx-r*.19} cy={cy+r*.01} r={r*.03} fill={color}/>
       <circle cx={cx+r*.22} cy={cy+r*.04} r={r*.08} fill={ink}/>
-      <circle cx={cx+r*.25} cy={cy+r*.01} r={r*.03} fill="#fff"/>
+      <circle cx={cx+r*.25} cy={cy+r*.01} r={r*.03} fill={color}/>
       <polygon points={`${cx-r*.11},${cy+r*.18} ${cx+r*.11},${cy+r*.18} ${cx},${cy+r*.34}`} fill={ink}/>
       <circle cx={cx-r*.34} cy={cy+r*.24} r={r*.11} fill={ink} opacity=".22"/>
       <circle cx={cx+r*.34} cy={cy+r*.24} r={r*.11} fill={ink} opacity=".22"/>
@@ -199,7 +198,7 @@ function CuteStamp({kind,cx,cy,r,color,ink}:{kind:StampKind;cx:number;cy:number;
   return <g><path d={`M ${cx-r*.72} ${cy-r*.08} Q ${cx-r*.4} ${cy-r*.78} ${cx+r*.06} ${cy-r*.6} Q ${cx+r*.78} ${cy-r*.28} ${cx+r*.6} ${cy+r*.45} Q ${cx} ${cy+r*.82} ${cx-r*.62} ${cy+r*.38} Z`} fill={color}/><text x={cx} y={cy+r*.12} textAnchor="middle" fontSize={r*.72} fontWeight="900" fill={ink}>{choice?.glyph||'🐾'}</text></g>;
 }
 
-function StampCardPreview({kind,active,color}:{kind:StampKind;active:boolean;color:string}){
+function StampCardPreview({kind,color}:{kind:StampKind;color:string}){
   return (
     <svg viewBox="0 0 60 60" width="46" height="46" className="stamp-preview-svg" aria-hidden="true">
       <CuteStamp
@@ -208,7 +207,7 @@ function StampCardPreview({kind,active,color}:{kind:StampKind;active:boolean;col
         cy={30}
         r={22}
         color={color}
-        ink={active ? 'var(--canvas)' : 'var(--ink)'}
+        ink={'var(--ink)'}
       />
     </svg>
   );
@@ -217,14 +216,19 @@ function StampCardPreview({kind,active,color}:{kind:StampKind;active:boolean;col
 const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;color:string;ink:string}){
   const p=mark.points[0]||{x:.5,y:.5},path=pathFrom(mark.points),sw=Math.max(14,22*mark.size),rnd=seeded(mark.seed),cls=`mark mark-${mark.tool}`;
   if(mark.tool==='fill'){
-    if(mark.fillDataUrl){
+    // Render fills from their alpha mask, not from a pre-colored bitmap. This
+    // keeps transparent pixels truly transparent and lets world/color changes
+    // retint the same fill without briefly exposing a white mask/background.
+    if(mark.fillMaskDataUrl){
+      const fillMaskId=`fill_${mark.id.replace(/[^a-zA-Z0-9_]/g,'_')}`;
       return <g className={cls}>
-        <image href={mark.fillDataUrl} x="0" y="0" width="1000" height="700" preserveAspectRatio="none"/>
+        <defs><mask id={fillMaskId} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="700">
+          <image href={mark.fillMaskDataUrl} x="0" y="0" width="1000" height="700" preserveAspectRatio="none" pointerEvents="none"/>
+        </mask></defs>
+        <rect width="1000" height="700" fill={color} mask={`url(#${fillMaskId})`}/>
       </g>;
     }
-    return <g className={cls}>
-      <rect width="1000" height="700" fill={color}/>
-    </g>;
+    return <g className={cls}><rect width="1000" height="700" fill={color}/></g>;
   }
   if(mark.tool==='crayon'){
     return <g className={cls}>
@@ -244,7 +248,7 @@ const MarkArt=React.memo(function MarkArt({mark,color,ink}:{mark:CanvasMark;colo
     return <g className={cls} transform={`translate(${cx} ${cy}) rotate(${(mark.seed%17)-8})`}><circle r={r*.42} fill={color} opacity=".92"/><circle r={r*.76} fill="none" stroke={color} strokeWidth={5} opacity=".3"/>{Array.from({length:14},(_,i)=>{const a=i/14*Math.PI*2,a2=a+(rnd()-.5)*.18,len=r*(.85+rnd()*.55);return <path key={i} d={`M ${Math.cos(a)*r*.45} ${Math.sin(a)*r*.45} L ${Math.cos(a2)*len} ${Math.sin(a2)*len}`} stroke={color} strokeWidth={4+rnd()*7} strokeLinecap="round"/>})}{Array.from({length:10},(_,i)=>{const a=rnd()*Math.PI*2,d=r*(.7+rnd()*.8);return <circle key={`d${i}`} cx={Math.cos(a)*d} cy={Math.sin(a)*d} r={2+rnd()*7} fill={color} opacity={.35+rnd()*.5}/>})}<circle r={r*.14} fill={ink} opacity=".18"/></g>;
   }
   const stampPool=WORLDS.flatMap(w=>w.stamps), cx=p.x*1000,cy=p.y*700,r=36+mark.size*25,kind=mark.stampKind||stampPool[mark.seed%stampPool.length]?.id||'star';
-  return <g className={cls}>
+  return <g className={cls} shapeRendering="geometricPrecision">
     <CuteStamp kind={kind} cx={cx} cy={cy} r={r} color={color} ink={ink}/>
   </g>;
 });
@@ -408,7 +412,7 @@ export default function App(){
     if(tool==='eraser'){eraseAt(p);return;}
     if(tool==='fill'){
       const sound=world.palette[paletteIndex%world.palette.length];
-      const result=performFloodFill(marks,p,sound.color,world);
+      const result=performFloodFill(marks,p,world);
       const next:CanvasMark={
         id:`m_${Date.now()}_${Math.floor(Math.random()*1e5)}`,
         paletteIndex,
@@ -416,7 +420,6 @@ export default function App(){
         points:[p],
         size:1,
         seed:Math.floor(Math.random()*1e9),
-        fillDataUrl:result.fillDataUrl,
         fillMaskDataUrl:result.fillMaskDataUrl,
         bounds:result.bounds,
         gesture:createGestureStats(p),
@@ -466,20 +469,19 @@ export default function App(){
   };
 
   const chooseWorld=(id:WorldId)=>{
-    transport.stop();
+    if(id===worldId){setShowWorlds(false);return;}
+    transport.hardStop();
+    activePointerId.current=null;
+    eraseQueue.current=[];
+    publishDraft(null,true);
+    publishHover(null,true);
     transport.unlockAudio(id,0);
     setWorldId(id);
     setShowWorlds(false);
     setPaletteIndex(0);
     setStampKind(WORLD_MAP[id].stamps[0]?.id||'cat');
-    setMarks(prev=>prev.map(m=>{
-      if(m.tool==='fill'&&m.fillMaskDataUrl){
-        const sound=WORLD_MAP[id].palette[m.paletteIndex%WORLD_MAP[id].palette.length];
-        const newUrl=recolorFillDataUrl(m.fillMaskDataUrl,sound.color);
-        return {...m,fillDataUrl:newUrl};
-      }
-      return m;
-    }));
+    // Fill colors are now rendered directly from their masks, so changing
+    // worlds retints them automatically without generating intermediate PNGs.
   };
   const undo=()=>{setMarks(prev=>prev.slice(0,-1));};
   const progress=song.totalDuration?Math.max(0,Math.min(1,state.currentTime/song.totalDuration)):0;
@@ -569,7 +571,7 @@ export default function App(){
               aria-label={s.label}
               title={s.label}
             >
-              <StampCardPreview kind={s.id} active={stampKind===s.id} color={palette[paletteIndex].color}/>
+              <StampCardPreview kind={s.id} color={palette[paletteIndex].color}/>
             </button>
           ))}
         </div>

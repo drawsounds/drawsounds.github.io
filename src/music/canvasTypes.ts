@@ -43,7 +43,6 @@ export interface CanvasMark {
   stampKind?: StampKind;
   gesture?: GestureStats;
   erasures?: Array<CanvasPoint & { radius?: number }>;
-  fillDataUrl?: string;
   fillMaskDataUrl?: string;
   bounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
