@@ -1,0 +1,6 @@
+{
+  "name": "Aura",
+  "description": "A touch-first SoundFont musical sketch pad: draw colors, stamp shapes, and play the picture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

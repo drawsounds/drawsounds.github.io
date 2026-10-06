@@ -1,0 +1,10 @@
+Bandoneon version 2 — Jörg Bleymehl, 2016
+
+SF2 embedded metadata:
+"All sounds played on a 1930 ELA bandoneon.
+
+You may use bandoneon_v2 without restriction for your own music creation, private or commercial. This SoundFont bank is provided to the community free of charge. Please feel free to use it in your software projects."
+
+Author: Jörg Bleymehl
+Original project mirror used for Aura manual fetcher:
+https://github.com/jebentancour/Bandonberry/blob/master/bandoneon_v2.sf2

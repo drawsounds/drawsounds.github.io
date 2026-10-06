@@ -1,0 +1,39 @@
+Aura specialist SoundFont sources — v0.20
+
+These files replace the provisional Aura-generated specialist banks from v0.19.
+
+Aura-Bandoneon.sf2
+  Upstream file: bandoneon_v2.sf2
+  Preset 0: Bandoneon
+  Recorded instrument: 1930 ELA bandoneon
+  Author: Jörg Bleymehl
+  Embedded SF2 license permits private/commercial music creation and use in software projects.
+  Source mirror: https://github.com/jebentancour/Bandonberry/blob/master/bandoneon_v2.sf2
+  See licenses/Bandoneon-LICENSE.txt.
+
+Aura-NylonGuitar.sf2
+  Upstream: FreePats Spanish classical guitar, 2019-06-18
+  Preset 0: Classical guitar
+  License: CC0 1.0
+  See licenses/SpanishClassicalGuitar-CC0.txt and README.
+
+Aura-FingerBass.sf2
+  Upstream: FreePats Finger Bass YR, 2019-09-30
+  Preset 0: Finger Bass YR
+  Sampled Yamaha RBX bass
+  License: CC0 1.0
+  See licenses/FingerBassYR-LICENSE.txt and README.
+
+Aura-WorldPercussion.sf2
+  Upstream: FreePats World Percussion, 2020-09-05
+  Preset 0: World Percussion
+  Includes real cajon, bongo, shaker, tambourine, clap, claves, castanets, conga, maracas and darbuka samples.
+  License: CC0 1.0
+  See licenses/WorldPercussion-LICENSE.txt and README.
+
+Aura-CleanGuitar.sf2
+  Upstream: FreePats Electric Guitar FSBS clean, bridge small, 2026-08-07
+  Preset 0: EGuitar Cl. Br. Sm.
+  Sampled Fender electric guitar
+  License: CC0 1.0
+  See licenses/CleanElectricGuitar-LICENSE.txt and README.
