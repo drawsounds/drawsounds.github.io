@@ -3,24 +3,34 @@ import type { Performer, StampChoice, WorldConfig, WorldId } from '../canvasType
 const MAJOR=[0,2,4,5,7,9,11], MINOR=[0,2,3,5,7,8,10], DORIAN=[0,2,3,5,7,9,10], PENTA=[0,2,4,7,9], MINOR_PENTA=[0,3,5,7,10], PHRYGIAN=[0,1,3,5,7,8,10], HARM_MINOR=[0,2,3,5,7,8,11];
 const P=(name:string,color:string,ink:string,role:Performer['role'],program:number,octave:number,extra:Partial<Performer>={}):Performer=>({name,color,ink,role,bank:'gm',program,octave,...extra});
 const O=(name:string,color:string,ink:string,role:Performer['role'],program:number,octave:number,extra:Partial<Performer>={}):Performer=>({name,color,ink,role,bank:'odd',program,octave,...extra});
-const cute:StampChoice[]=[['star','star','★'],['cat','cat','⌁'],['rocket','rocket','↑'],['frog','frog','◉'],['flower','flower','✿'],['lightning','zap','ϟ']].map(([id,label,glyph])=>({id,label,glyph}));
+const cute:StampChoice[]=[
+  {id:'cat',label:'kitty',glyph:'🐱'},
+  {id:'bunny',label:'bunny',glyph:'🐰'},
+  {id:'bear',label:'bear',glyph:'🐻'},
+  {id:'frog',label:'froggy',glyph:'🐸'},
+  {id:'panda',label:'panda',glyph:'🐼'},
+  {id:'puppy',label:'puppy',glyph:'🐶'},
+  {id:'chick',label:'chick',glyph:'🐥'},
+  {id:'fox',label:'fox',glyph:'🦊'},
+  {id:'penguin',label:'penguin',glyph:'🐧'},
+];
 const flamenco:StampChoice[]=[
-  {id:'rasgueado',label:'rasgueado',glyph:'≋',technique:'rasgueado'},
-  {id:'abanico',label:'abanico',glyph:'✺',technique:'abanico'},
-  {id:'golpe',label:'golpe',glyph:'●',technique:'golpe'},
-  {id:'picado',label:'picado',glyph:'⋯',technique:'picado'},
-  {id:'alzapua',label:'alzapúa',glyph:'↕',technique:'alzapua'},
-  {id:'llamada',label:'llamada',glyph:'!',technique:'llamada'},
-  {id:'remate',label:'remate',glyph:'✹',technique:'remate'},
+  {id:'cat',label:'kitty (rasgueado)',glyph:'🐱',technique:'rasgueado'},
+  {id:'fox',label:'fox (abanico)',glyph:'🦊',technique:'abanico'},
+  {id:'bear',label:'bear (golpe)',glyph:'🐻',technique:'golpe'},
+  {id:'frog',label:'froggy (picado)',glyph:'🐸',technique:'picado'},
+  {id:'panda',label:'panda (alzapúa)',glyph:'🐼',technique:'alzapua'},
+  {id:'puppy',label:'puppy (llamada)',glyph:'🐶',technique:'llamada'},
+  {id:'chick',label:'chick (remate)',glyph:'🐥',technique:'remate'},
 ];
 const tango:StampChoice[]=[
-  {id:'marcato2',label:'marcato 2',glyph:'Ⅱ',technique:'marcato2'},
-  {id:'marcato4',label:'marcato 4',glyph:'Ⅳ',technique:'marcato4'},
-  {id:'sincopa',label:'síncopa',glyph:'⌁',technique:'sincopa'},
-  {id:'arrastre',label:'arrastre',glyph:'↝',technique:'arrastre'},
-  {id:'milonga',label:'milonga',glyph:'·×·',technique:'milonga'},
-  {id:'yumba',label:'yumba',glyph:'Y',technique:'yumba'},
-  {id:'bordoneo',label:'bordoneo',glyph:'∿',technique:'bordoneo'},
+  {id:'cat',label:'kitty (marcato 4)',glyph:'🐱',technique:'marcato4'},
+  {id:'bunny',label:'bunny (marcato 2)',glyph:'🐰',technique:'marcato2'},
+  {id:'bear',label:'bear (síncopa)',glyph:'🐻',technique:'sincopa'},
+  {id:'frog',label:'froggy (arrastre)',glyph:'🐸',technique:'arrastre'},
+  {id:'panda',label:'panda (milonga)',glyph:'🐼',technique:'milonga'},
+  {id:'puppy',label:'puppy (yumba)',glyph:'🐶',technique:'yumba'},
+  {id:'penguin',label:'penguin (bordoneo)',glyph:'🐧',technique:'bordoneo'},
 ];
 
 export const WORLDS:WorldConfig[]=[

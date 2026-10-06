@@ -3,7 +3,7 @@ import type { NoteEvent, PerformerRole, ProductionGesture, SoundBank } from '../
 export type WorldId = 'dreamland' | 'drum_circle' | 'pop_star' | 'rock_monster' | 'salsa_party' | 'weird_cabinet' | 'zouk' | 'flamenco' | 'tango';
 export type CanvasTool = 'crayon' | 'dots' | 'spray' | 'stamp' | 'boom' | 'fill' | 'eraser';
 export type DrawTool = Exclude<CanvasTool, 'eraser'>;
-export type GenericStampKind = 'star' | 'cat' | 'rocket' | 'frog' | 'flower' | 'lightning';
+export type GenericStampKind = 'cat' | 'bunny' | 'bear' | 'frog' | 'panda' | 'puppy' | 'chick' | 'fox' | 'penguin' | 'star' | 'rocket' | 'flower' | 'lightning';
 export type StampKind = string;
 
 export interface CanvasPoint { x: number; y: number; }
@@ -18,6 +18,9 @@ export interface CanvasMark {
   frozenEvents?: NoteEvent[];
   frozenWorldId?: WorldId;
   erasures?: Array<CanvasPoint & { radius?: number }>;
+  fillDataUrl?: string;
+  fillMaskDataUrl?: string;
+  bounds?: { minX: number; maxX: number; minY: number; maxY: number };
 }
 
 export interface Performer {

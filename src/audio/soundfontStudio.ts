@@ -2,22 +2,29 @@ import { WorkletSynthesizer } from 'spessasynth_lib';
 import type { NoteEvent, PerformerRole, StudioState, SoundBank } from './types';
 import { WORLD_MAP } from '../music/worlds/config';
 
+function resolveAssetUrl(relPath:string){
+  const base=import.meta.env.BASE_URL||'./';
+  const cleanBase=base.endsWith('/')?base:`${base}/`;
+  const cleanPath=relPath.startsWith('/')?relPath.slice(1):relPath;
+  return `${cleanBase}${cleanPath}`;
+}
+
 const BANK_URLS:Record<SoundBank,string>={
-  gm:'/soundfonts/TimGM6mb.sf3',
-  odd:'/soundfonts/Aura-Oddities.sf3',
-  bandoneon:'/soundfonts/Aura-Bandoneon.sf3',
-  nylon:'/soundfonts/Aura-NylonGuitar.sf3',
-  finger_bass:'/soundfonts/Aura-FingerBass.sf3',
-  world_perc:'/soundfonts/Aura-WorldPercussion.sf3',
-  clean_guitar:'/soundfonts/Aura-CleanGuitar.sf3',
-  flamenco_strum:'/soundfonts/Aura-FlamencoStrum-DrJass.sf3',
-  piano_kw:'/soundfonts/optional/UprightPianoKW-small.sf3',
-  tenor_sax:'/soundfonts/optional/TenorSaxophone-small.sf3',
-  harp:'/soundfonts/optional/ConcertHarp-small.sf3',
-  tubular_bells:'/soundfonts/optional/TubularBells-small.sf3',
-  ocarina:'/soundfonts/optional/Ocarina.sf3',
-  lately_bass:'/soundfonts/optional/LatelyBass.sf3',
-  acoustic_drums:'/soundfonts/optional/MuldjordKit.sf3',
+  gm:resolveAssetUrl('soundfonts/TimGM6mb.sf3'),
+  odd:resolveAssetUrl('soundfonts/Aura-Oddities.sf3'),
+  bandoneon:resolveAssetUrl('soundfonts/Aura-Bandoneon.sf3'),
+  nylon:resolveAssetUrl('soundfonts/Aura-NylonGuitar.sf3'),
+  finger_bass:resolveAssetUrl('soundfonts/Aura-FingerBass.sf3'),
+  world_perc:resolveAssetUrl('soundfonts/Aura-WorldPercussion.sf3'),
+  clean_guitar:resolveAssetUrl('soundfonts/Aura-CleanGuitar.sf3'),
+  flamenco_strum:resolveAssetUrl('soundfonts/Aura-FlamencoStrum-DrJass.sf3'),
+  piano_kw:resolveAssetUrl('soundfonts/optional/UprightPianoKW-small.sf3'),
+  tenor_sax:resolveAssetUrl('soundfonts/optional/TenorSaxophone-small.sf3'),
+  harp:resolveAssetUrl('soundfonts/optional/ConcertHarp-small.sf3'),
+  tubular_bells:resolveAssetUrl('soundfonts/optional/TubularBells-small.sf3'),
+  ocarina:resolveAssetUrl('soundfonts/optional/Ocarina.sf3'),
+  lately_bass:resolveAssetUrl('soundfonts/optional/LatelyBass.sf3'),
+  acoustic_drums:resolveAssetUrl('soundfonts/optional/MuldjordKit.sf3'),
 };
 
 // Each specialist bank lives in its own MIDI bank MSB, avoiding preset collisions.
@@ -42,7 +49,7 @@ export class SoundFontStudio{
   private synthPromise:Promise<WorkletSynthesizer>|null=null;private loadedBanks=new Map<SoundBank,Promise<void>>();
   constructor(){this.master.gain.value=.8;this.safety.threshold.value=-8;this.safety.knee.value=14;this.safety.ratio.value=3;this.safety.attack.value=.008;this.safety.release.value=.18;this.master.connect(this.safety);this.safety.connect(this.analyser);this.analyser.connect(this.ctx.destination);this.panL.pan.value=-.5;this.panR.pan.value=.5;this.roomL.connect(this.panL);this.roomR.connect(this.panR);this.panL.connect(this.roomWetL);this.panR.connect(this.roomWetR);this.roomWetL.connect(this.master);this.roomWetR.connect(this.master);this.roomIn.connect(this.roomL);this.roomIn.connect(this.roomR);this.echoFilterL.type=this.echoFilterR.type='lowpass';this.echoL.connect(this.echoFilterL);this.echoR.connect(this.echoFilterR);this.echoFilterL.connect(this.echoWetL);this.echoFilterR.connect(this.echoWetR);this.echoWetL.connect(this.master);this.echoWetR.connect(this.master);this.echoFilterL.connect(this.echoFbL);this.echoFbL.connect(this.echoR);this.echoFilterR.connect(this.echoFbR);this.echoFbR.connect(this.echoL);this.echoIn.connect(this.echoL);this.echoIn.connect(this.echoR);}
   resumeTransport(){if(this.ctx.state==='suspended')void this.ctx.resume();}
-  private ensureSynth(){if(!this.synthPromise)this.synthPromise=(async()=>{await this.ctx.audioWorklet.addModule('/spessasynth_processor.min.js');const synth=new WorkletSynthesizer(this.ctx,{eventsEnabled:false});await synth.isReady;synth.setLogLevel(false,true,false);return synth;})();return this.synthPromise;}
+  private ensureSynth(){if(!this.synthPromise)this.synthPromise=(async()=>{await this.ctx.audioWorklet.addModule(resolveAssetUrl('spessasynth_processor.min.js'));const synth=new WorkletSynthesizer(this.ctx,{eventsEnabled:false});await synth.isReady;synth.setLogLevel(false,true,false);return synth;})();return this.synthPromise;}
   private async ensureBank(bank:SoundBank){let p=this.loadedBanks.get(bank);if(!p){p=(async()=>{const synth=await this.ensureSynth();const r=await fetch(BANK_URLS[bank]);if(!r.ok)throw new Error(`${bank} SF3 ${r.status}`);await synth.soundBankManager.addSoundBank(await r.arrayBuffer(),bank,BANK_OFFSET[bank]);})();this.loadedBanks.set(bank,p);}return p;}
   private channelFor(e:NoteEvent){return (e.bank??'gm')==='gm'&&e.channelRole==='drums'?9:Math.max(0,Math.min(8,e.channelIndex??0));}
   private async ensureStrip(e:NoteEvent){const channel=this.channelFor(e),old=this.strips.get(channel);if(old)return old;const synth=await this.ensureSynth(),idx=Math.max(0,Math.min(8,e.channelIndex??0)),role=e.channelRole??'melody',input=this.ctx.createGain(),hp=this.ctx.createBiquadFilter(),body=this.ctx.createBiquadFilter(),lp=this.ctx.createBiquadFilter(),pan=this.ctx.createStereoPanner(),dry=this.ctx.createGain(),drive=this.ctx.createWaveShaper(),driveWet=this.ctx.createGain(),room=this.ctx.createGain(),echo=this.ctx.createGain(),base=ROLE[role];hp.type='highpass';hp.frequency.value=base.hp;body.type='peaking';body.frequency.value=base.body;body.Q.value=.72;body.gain.value=base.db;lp.type='lowpass';lp.frequency.value=11000;pan.pan.value=(idx%2?1:-1)*base.pan;dry.gain.value=base.dry;drive.curve=driveCurve(1.1);drive.oversample='2x';driveWet.gain.value=base.drive;room.gain.value=base.room;echo.gain.value=base.echo;synth.connectChannel(input,channel);input.connect(hp);hp.connect(body);body.connect(lp);lp.connect(pan);pan.connect(dry);dry.connect(this.master);lp.connect(drive);drive.connect(driveWet);driveWet.connect(this.master);lp.connect(room);room.connect(this.roomIn);lp.connect(echo);echo.connect(this.echoIn);const strip={key:String(channel),channel,input,hp,body,lp,pan,dry,drive,driveWet,room,echo,active:[],role};this.strips.set(channel,strip);return strip;}

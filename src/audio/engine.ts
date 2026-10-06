@@ -17,6 +17,6 @@ class Transport {
   private clearLoops(){if(this.timer!==null){clearInterval(this.timer);this.timer=null;}if(this.frame!==null){cancelAnimationFrame(this.frame);this.frame=null;}}
   private snapshot():TransportState{const t=this.currentTime(),idx=this.song?Math.max(0,this.song.sections.findIndex(s=>t>=s.startTime&&t<s.startTime+s.duration)):0,active:string[]=[];if(this.song)for(const s of this.song.sections)for(const p of s.phrases)if(t>=p.startTime&&t<=p.startTime+p.duration)active.push(p.id);return{isPlaying:this.playing,currentTime:t,totalDuration:this.song?.totalDuration??0,currentSectionIndex:idx,activePhraseIds:active};}
   private emit(){const s=this.snapshot();for(const l of this.listeners)l(s);}
-  subscribe(fn:(s:TransportState)=>void){this.listeners.add(fn);fn(this.snapshot());return()=>this.listeners.delete(fn);}
+  subscribe(fn:(s:TransportState)=>void){this.listeners.add(fn);fn(this.snapshot());return()=>{this.listeners.delete(fn);};}
 }
 export const transport=new Transport();
