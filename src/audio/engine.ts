@@ -4,9 +4,10 @@ import type { Phrase, Song, TransportState } from './types';
 class Transport {
   private studio:SoundFontStudio|null=null; private song:Song|null=null; private playing=false; private startTime=0; private pausedAt=0; private timer:number|null=null; private frame:number|null=null; private scheduled=new Set<string>(); private listeners=new Set<(s:TransportState)=>void>(); private lookAhead=.18; private scheduledTo=0;
   private init(){if(!this.studio)this.studio=new SoundFontStudio();}
+  unlockAudio(){this.init();this.studio!.unlockFromGesture();}
   setSong(song:Song,preservePosition=false,preserveAudition=false){const old=this.song?.totalDuration??0,thisPos=preservePosition&&old>0?Math.min(song.totalDuration,this.currentTime()):0;this.song=song;this.pausedAt=thisPos;this.scheduled.clear();this.scheduledTo=thisPos;if(this.playing){this.stop(false);this.playing=true;this.startTime=(this.studio?.ctx.currentTime??0)-thisPos;this.startLoops();}else if(!preserveAudition)this.studio?.stopTransport();this.emit();}
   private currentTime(){if(!this.song)return 0;if(this.playing&&this.studio)return Math.max(0,Math.min(this.song.totalDuration,this.studio.ctx.currentTime-this.startTime));return this.pausedAt;}
-  togglePlay(){if(this.playing)this.pause();else this.play();}
+  togglePlay(){if(this.playing)this.pause();else{this.unlockAudio();this.play();}}
   private play(){if(!this.song)return;this.init();this.studio!.resumeTransport();this.playing=true;this.startTime=this.studio!.ctx.currentTime-this.pausedAt;this.scheduledTo=this.pausedAt;this.scheduled.clear();this.startLoops();this.emit();}
   private pause(){if(!this.song||!this.studio)return;this.pausedAt=this.currentTime();this.playing=false;this.clearLoops();this.studio.stopTransport();this.emit();}
   stop(reset=true){if(reset)this.pausedAt=0;else this.pausedAt=this.currentTime();this.playing=false;this.clearLoops();this.scheduled.clear();this.scheduledTo=this.pausedAt;this.studio?.stopTransport();this.emit();}

@@ -300,6 +300,7 @@ export default function App(){
   const [bombState,setBombState]=useState<'idle'|'arming'|'boom'>('idle');
   const lastLiveAudition=useRef(0);
   const bombTimer=useRef<number|null>(null);
+  const activePointerId=useRef<number|null>(null);
 
   const song=useMemo(()=>interpretCanvas(marks,worldId),[marks,worldId]);
   useEffect(()=>{ if(!world.stamps.some(s=>s.id===stampKind)) setStampKind(world.stamps[0]?.id||'cat'); },[worldId]);
@@ -307,6 +308,28 @@ export default function App(){
   useEffect(()=>{transport.setSong(song,true,true);},[song]);
   useEffect(()=>transport.subscribe(setState),[]);
   useEffect(()=>()=>transport.stop(),[]);
+  useEffect(()=>{
+    const root=document.documentElement;
+    let frame=0;
+    const syncViewport=()=>{
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(()=>{
+        const height=window.visualViewport?.height??window.innerHeight;
+        root.style.setProperty('--app-height',`${Math.max(1,Math.round(height))}px`);
+      });
+    };
+    syncViewport();
+    window.addEventListener('resize',syncViewport,{passive:true});
+    window.addEventListener('orientationchange',syncViewport);
+    window.visualViewport?.addEventListener('resize',syncViewport,{passive:true});
+    return()=>{
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize',syncViewport);
+      window.removeEventListener('orientationchange',syncViewport);
+      window.visualViewport?.removeEventListener('resize',syncViewport);
+      root.style.removeProperty('--app-height');
+    };
+  },[]);
 
   const pointFromEvent=(e:React.PointerEvent<SVGSVGElement>):CanvasPoint=>{const r=e.currentTarget.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};};
   const addEffect=useCallback((mark:CanvasMark,kind:CanvasFx['kind'])=>{const p=mark.points[mark.points.length-1]||mark.points[0]||{x:.5,y:.5};const sound=WORLD_MAP[worldId].palette[mark.paletteIndex%WORLD_MAP[worldId].palette.length];const fx={id:`fx_${Date.now()}_${Math.random()}`,x:p.x,y:p.y,color:sound.color,ink:sound.ink,kind,seed:mark.seed,stampKind:mark.stampKind};setEffects(prev=>[...prev.slice(-10),fx]);window.setTimeout(()=>setEffects(prev=>prev.filter(x=>x.id!==fx.id)),650);},[worldId]);
@@ -329,7 +352,14 @@ export default function App(){
   const pointerDown=(e:React.PointerEvent<SVGSVGElement>)=>{
     const p=pointFromEvent(e);
     if(bombState==='arming'){cancelBomb();return;}
-    e.currentTarget.setPointerCapture(e.pointerId);setHoverPoint(p);
+    if(activePointerId.current!==null&&activePointerId.current!==e.pointerId)return;
+    activePointerId.current=e.pointerId;
+    // iOS/iPadOS Safari and iOS Chrome require Web Audio to be unlocked by
+    // the same real user gesture that starts the interaction. Do this before
+    // any async SoundFont/worklet loading or later pointermove audition.
+    transport.unlockAudio();
+    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit touch capture is enough */}
+    setHoverPoint(p);
     if(tool==='eraser'){eraseAt(p);return;}
     if(tool==='fill'){
       const sound=world.palette[paletteIndex%world.palette.length];
@@ -358,8 +388,9 @@ export default function App(){
   };
   const pointerMove=(e:React.PointerEvent<SVGSVGElement>)=>{
     const p=pointFromEvent(e);setHoverPoint(p);
-    if(tool==='eraser'&&(e.buttons&1)){eraseAt(p);return;}
-    if(!draft||!(e.buttons&1))return;
+    const isDrawing=activePointerId.current===e.pointerId;
+    if(tool==='eraser'&&isDrawing){eraseAt(p);return;}
+    if(!draft||!isDrawing)return;
     const last=draft.points[draft.points.length-1],min=draft.tool==='dots'?.034:draft.tool==='spray'?.019:.012;if(Math.hypot(last.x-p.x,last.y-p.y)<min)return;
     const next={...draft,points:[...draft.points,p]};setDraft(next);
     const now=performance.now();
@@ -371,7 +402,14 @@ export default function App(){
       audition(tiny,true);lastLiveAudition.current=now;
     }
   };
-  const pointerUp=(e:React.PointerEvent<SVGSVGElement>)=>{try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* noop */}if(draft){commit(draft,'scribble');setDraft(null);}};
+  const pointerUp=(e:React.PointerEvent<SVGSVGElement>)=>{
+    if(activePointerId.current!==e.pointerId)return;
+    // Retry on release as a defensive WebKit path after a drag gesture.
+    transport.unlockAudio();
+    activePointerId.current=null;
+    try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* noop */}
+    if(draft){commit(draft,'scribble');setDraft(null);}
+  };
 
   const chooseWorld=(id:WorldId)=>{
     transport.stop();
@@ -406,7 +444,7 @@ export default function App(){
       <div className={`music-paper ${marks.length?'has-marks':''} ${state.isPlaying?'playing':''}`}>
         {bombState==='boom'&&<div className="reset-boom" aria-hidden="true"><b>✹</b><i/><i/><i/><i/><i/><i/></div>}
         {!marks.length&&!draft&&<div className="empty-whisper" aria-hidden="true"><i/><span>draw something noisy</span><i/></div>}
-        <svg className="music-canvas" viewBox="0 0 1000 700" preserveAspectRatio="none" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onPointerLeave={()=>setHoverPoint(null)}>
+        <svg className="music-canvas" viewBox="0 0 1000 700" preserveAspectRatio="none" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onLostPointerCapture={pointerUp} onPointerLeave={e=>{if(activePointerId.current!==e.pointerId)setHoverPoint(null);}}>
           <rect width="1000" height="700" fill="transparent"/>
           {displayMarks.map(mark=>{const sound=palette[mark.paletteIndex%palette.length],maskId=`erase_${mark.id.replace(/[^a-zA-Z0-9_]/g,'_')}`;return <g key={mark.id}>{mark.erasures?.length?<defs><mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="700"><rect width="1000" height="700" fill="white"/>{mark.erasures.map((hole,i)=><ellipse key={i} cx={hole.x*1000} cy={hole.y*700} rx={(hole.radius??.05)*820} ry={(hole.radius??.05)*700} fill="black"/>)}</mask></defs>:null}<g mask={mark.erasures?.length?`url(#${maskId})`:undefined}><MarkArt mark={mark} color={sound.color} ink={sound.ink} active={activeIds.has(mark.id)}/></g></g>;})}
           {effects.map(fx=><FxArt key={fx.id} fx={fx}/>)}
@@ -483,7 +521,7 @@ export default function App(){
       )}
 
       <div className="play-row">
-        <button className={`giant-play ${state.isPlaying?'is-playing':''}`} onClick={()=>marks.length?transport.togglePlay():undefined} disabled={!marks.length} aria-label={state.isPlaying?'Pause drawing':'Play drawing'}>
+        <button className={`giant-play ${state.isPlaying?'is-playing':''}`} onPointerDown={()=>transport.unlockAudio()} onClick={()=>marks.length?transport.togglePlay():undefined} disabled={!marks.length} aria-label={state.isPlaying?'Pause drawing':'Play drawing'}>
           {state.isPlaying?<Pause size={27} fill="currentColor"/>:<Play size={29} fill="currentColor"/>}
         </button>
         <div className="transport-scrub">
