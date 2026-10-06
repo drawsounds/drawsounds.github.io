@@ -48,80 +48,14 @@ export type SoundId = keyof typeof SOUNDS;
 export const soundSpec=(sound:SoundId)=>SOUNDS[sound];
 export const bankOffset=(bank:RuntimeBank)=>BANKS[bank].offset;
 
-const CACHE='drawsounds-runtime-audio-v1';
-const REV='2026-10-06-lean2';
-const inFlight=new Map<RuntimeBank,Promise<ArrayBuffer>>();
-let persistence:Promise<boolean>|null=null;
-
 function assetUrl(path:string){
   const base=import.meta.env.BASE_URL||'./';
   const prefix=base.endsWith('/')?base:`${base}/`;
-  return `${prefix}${path}?v=${REV}`;
+  return `${prefix}${path}`;
 }
 
-export function requestPersistentAudioStorage(){
-  if(persistence)return persistence;
-  persistence=(async()=>{
-    try{
-      if(!navigator.storage?.persist)return false;
-      if(await navigator.storage.persisted?.())return true;
-      return await navigator.storage.persist();
-    }catch{return false;}
-  })();
-  return persistence;
-}
-
-async function networkFetch(request:Request){
-  const response=await fetch(request,{cache:'no-cache'});
+export async function fetchRuntimeBank(bank:RuntimeBank){
+  const response=await fetch(assetUrl(BANKS[bank].path));
   if(!response.ok)throw new Error(`Audio asset unavailable (${response.status})`);
-  return response;
-}
-
-/** Cache Storage is the durable source. Failure to use Cache Storage must never
- * block audio; it only means this visit falls back to the normal HTTP cache. */
-async function cachedFetch(url:string){
-  const request=new Request(url,{credentials:'same-origin'});
-  if(typeof caches==='undefined')return networkFetch(request);
-
-  let cache:Cache|undefined;
-  try{
-    cache=await caches.open(CACHE);
-    const hit=await cache.match(request);
-    if(hit?.ok)return hit;
-  }catch{/* Private mode/storage pressure: use the network path. */}
-
-  const response=await networkFetch(request);
-  if(cache){
-    try{await cache.put(request,response.clone());}catch{/* Cache is optional. */}
-  }
-  return response;
-}
-
-/** Loads bytes for synth parsing. In-flight requests are coalesced, but resolved
- * ArrayBuffers are deliberately not retained on the main thread: the worklet and
- * Cache Storage are the long-lived copies. */
-export function fetchRuntimeBank(bank:RuntimeBank){
-  let job=inFlight.get(bank);
-  if(!job){
-    job=(async()=>{
-      const response=await cachedFetch(assetUrl(BANKS[bank].path));
-      return response.arrayBuffer();
-    })();
-    inFlight.set(bank,job);
-    const release=()=>{if(inFlight.get(bank)===job)inFlight.delete(bank);};
-    void job.then(release,release);
-  }
-  return job.then(buffer=>buffer.slice(0));
-}
-
-let prefetch:Promise<void>|null=null;
-/** Warms durable storage without retaining or parsing the banks in JS memory. */
-export function prefetchRuntimeSoundFonts(){
-  if(prefetch)return prefetch;
-  prefetch=(async()=>{
-    for(const bank of ['instruments','percussion'] as const){
-      try{void await cachedFetch(assetUrl(BANKS[bank].path));}catch{/* Playback reports real load failures. */}
-    }
-  })();
-  return prefetch;
+  return response.arrayBuffer();
 }

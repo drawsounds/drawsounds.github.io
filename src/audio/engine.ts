@@ -1,6 +1,5 @@
 import { SoundFontStudio } from './soundfontStudio';
 import type { NoteEvent, Phrase, Song, TransportState } from './types';
-import { prefetchRuntimeSoundFonts } from './sounds';
 
 type TimelineEvent = { time:number; event:NoteEvent };
 
@@ -20,19 +19,26 @@ class Transport {
   private scheduledTo=0;
   private playRequest=0;
   private audioError:string|undefined;
+  private audioReady=false;
 
   private init(){if(!this.studio)this.studio=new SoundFontStudio();}
 
-  prefetchWorld(_worldId:string){void prefetchRuntimeSoundFonts();}
-
-  unlockAudio(worldId?:string,paletteIndex?:number){
+  activateDrawingAudio(worldId?:string,paletteIndex=0){
     this.audioError=undefined;
     this.init();
-    this.studio!.unlockFromGesture();
-    if(worldId)void this.studio!.prepareWorld(worldId,paletteIndex).catch(err=>{
-      this.audioError=err instanceof Error?err.message:'Unable to load DrawSounds audio';
+    void this.studio!.unlockFromGesture().then(()=>{
+      this.audioReady=true;
+      this.emit();
+      if(worldId)return this.studio!.prepareWorld(worldId,paletteIndex);
+    }).catch(err=>{
+      this.audioReady=false;
+      this.audioError=err instanceof Error?err.message:'Unable to start DrawSounds audio';
       this.emit();
     });
+  }
+
+  unlockAudio(worldId?:string,paletteIndex?:number){
+    this.activateDrawingAudio(worldId,paletteIndex);
   }
 
   preparePalette(worldId:string,paletteIndex:number){this.unlockAudio(worldId,paletteIndex);}
@@ -60,9 +66,7 @@ class Transport {
     const worldChanged=Boolean(previousWorld&&previousWorld!==song.worldId);
     const oldTime=this.currentTime(),oldScheduledTo=this.scheduledTo;
 
-    // A new world is not an edit to the current performance. It is a hard
-    // musical boundary: cancel prepare/play races, stop both buses, reset the
-    // clock and never preserve notes from the old orchestration.
+    // World changes are hard transport boundaries.
     if(worldChanged){
       this.playRequest++;this.preparing=false;this.playing=false;this.clearLoops();
       this.pausedAt=0;this.scheduledTo=0;this.nextEventIndex=0;
@@ -77,8 +81,6 @@ class Transport {
     this.studio?.setStudioState({worldId:song.worldId,tempo:song.baseTempo});
 
     if(this.playing&&this.studio){
-      // Preserve the audio clock across edits. Notes already inside the tiny
-      // look-ahead window finish; the rebuilt cursor takes over after it.
       this.startTime=this.studio.ctx.currentTime-pos;
       this.scheduledTo=Math.min(song.totalDuration,Math.max(pos,oldScheduledTo));
       this.nextEventIndex=this.lowerBound(this.scheduledTo);
@@ -102,8 +104,6 @@ class Transport {
     if(this.playing)this.pause();
     else if(this.preparing){
       this.playRequest++;this.preparing=false;
-      // A second tap while loading is also a stop gesture. Silence any live
-      // audition bus and discard room/echo tails that may already be ringing.
       this.studio?.hardStop();
       this.emit();
     }else void this.play();
@@ -145,8 +145,6 @@ class Transport {
     this.pausedAt=this.currentTime();
     this.playing=false;
     this.clearLoops();
-    // Pause is user-requested silence, not merely a transport-note pause. Kill
-    // audition voices and shared effect tails too while preserving the clock.
     this.studio.hardStop();
     this.emit();
   }
@@ -171,8 +169,7 @@ class Transport {
     this.clearLoops();
     this.scheduledTo=this.pausedAt;
     this.nextEventIndex=this.lowerBound(this.pausedAt);
-    // Stop is an absolute silence boundary. Both playback buses and the room/
-    // echo layer must end now; otherwise bomb/reset can leave audible tails.
+    // Stop clears transport, audition voices, and effect tails.
     this.studio?.hardStop();
     this.emit();
   }
@@ -188,29 +185,34 @@ class Transport {
     this.emit();
   }
 
-  auditionPhrase(phrase:Phrase,live=false,onset=false){
+  auditionPhrase(phrase:Phrase,live=false,onset=false):NoteEvent[]{
     this.init();
     this.studio!.resumeTransport();
     if(this.song)this.studio!.setStudioState({worldId:this.song.worldId,tempo:this.song.baseTempo});
-    const ordered=phrase.events.slice().sort((a,b)=>a.timeOffset-b.timeOffset);
-    if(!ordered.length)return;
-    let events=ordered;
+    const source=phrase.events;
+    if(!source.length)return [];
+    let events:NoteEvent[];
     if(live){
-      if(onset){
-        const firstTime=ordered[0].timeOffset;
-        events=ordered.filter(e=>Math.abs(e.timeOffset-firstTime)<.03).slice(0,3);
-        if(!events.length)events=[ordered[0]];
-      }else{
-        const last=ordered[ordered.length-1];
-        events=ordered.filter(e=>Math.abs(e.timeOffset-last.timeOffset)<.03).slice(-3);
-        if(!events.length)events=[last];
+      let anchor=source[0];
+      for(let i=1;i<source.length;i++)if(onset?source[i].timeOffset<anchor.timeOffset:source[i].timeOffset>anchor.timeOffset)anchor=source[i];
+      events=[];
+      for(const e of source){
+        if(Math.abs(e.timeOffset-anchor.timeOffset)>=.03)continue;
+        if(onset){if(events.length<3)events.push(e);}
+        else{events.push(e);if(events.length>3)events.shift();}
       }
+      if(!events.length)events=[anchor];
+      if(events.length>1)events.sort((a,b)=>a.timeOffset-b.timeOffset);
     }else{
+      const ordered=source.slice().sort((a,b)=>a.timeOffset-b.timeOffset);
       const first=ordered[0].timeOffset;
       events=ordered.filter(e=>e.timeOffset-first<=1.8).slice(0,18);
     }
-    const first=Math.min(...events.map(e=>e.timeOffset)),start=this.studio!.ctx.currentTime+.008;
-    for(const e of events)this.studio!.playNote({...e,timeOffset:e.timeOffset-first,duration:live?Math.min(1.25,e.duration):e.duration},start+Math.max(0,e.timeOffset-first),'audition');
+    let first=events[0].timeOffset;for(let i=1;i<events.length;i++)if(events[i].timeOffset<first)first=events[i].timeOffset;
+    const played=events.map(e=>({...e,timeOffset:Math.max(0,e.timeOffset-first),duration:live?Math.min(1.25,e.duration):e.duration}));
+    const start=this.studio!.ctx.currentTime+.008;
+    for(const e of played)this.studio!.playNote(e,start+e.timeOffset,'audition');
+    return played;
   }
 
   private schedule(){
@@ -233,7 +235,6 @@ class Transport {
   private startLoops(){
     this.clearLoops();
     this.scheduleTimer=window.setInterval(()=>this.schedule(),45);
-    // Web Audio owns timing; React only needs a low-cost playhead refresh.
     this.uiTimer=window.setInterval(()=>this.emit(),50);
     this.schedule();
   }
@@ -246,6 +247,7 @@ class Transport {
   private snapshot():TransportState{return{
     isPlaying:this.playing,
     isPreparing:this.preparing,
+    isAudioReady:this.audioReady,
     audioError:this.audioError,
     currentTime:this.currentTime(),
     totalDuration:this.song?.totalDuration??0,

@@ -22,7 +22,7 @@ button:disabled,input:disabled{opacity:.32;cursor:not-allowed}
 .mark-fill{transition:opacity .18s ease}
 
 .empty-whisper{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:13px;pointer-events:none;color:color-mix(in srgb,var(--ink) 27%,transparent);font-weight:800;letter-spacing:.01em;font-size:clamp(16px,4.5vw,30px)}.empty-whisper i{width:16px;height:16px;border-radius:50%;background:var(--accent);opacity:.12}.empty-whisper i:last-child{transform:scale(.55)}
-.mark{transform-box:fill-box;transform-origin:center;transition:filter .12s ease,opacity .12s ease}.mark-crayon{mix-blend-mode:normal}.mark-spray{filter:saturate(1.03)}
+.mark{transform-box:fill-box;transform-origin:center;transition:opacity .12s ease}.mark-crayon{mix-blend-mode:normal}.mark-spray{filter:none}
 
 .brush-cursor{opacity:.18;pointer-events:none}
 .eraser-cursor{pointer-events:none;opacity:.68}.eraser-cursor circle{fill:color-mix(in srgb,var(--canvas) 78%,transparent);stroke:var(--ink);stroke-width:3;stroke-dasharray:6 6}.eraser-cursor path{fill:none;stroke:var(--ink);stroke-width:4;stroke-linecap:round;opacity:.65}
@@ -30,7 +30,7 @@ button:disabled,input:disabled{opacity:.32;cursor:not-allowed}
 .reset-boom{position:absolute;inset:0;z-index:8;pointer-events:none;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 26%,transparent),transparent 56%);animation:reset-flash .6s ease-out forwards}.reset-boom b{font-size:clamp(80px,25vw,210px);line-height:1;color:var(--accent);text-shadow:0 0 35px color-mix(in srgb,var(--accent) 44%,transparent);animation:reset-core .55s cubic-bezier(.12,.8,.2,1) forwards}.reset-boom i{position:absolute;left:50%;top:50%;width:10px;height:120%;border-radius:99px;background:var(--accent);transform-origin:50% 0;opacity:.65}.reset-boom i:nth-of-type(1){transform:rotate(0deg)}.reset-boom i:nth-of-type(2){transform:rotate(30deg)}.reset-boom i:nth-of-type(3){transform:rotate(60deg)}.reset-boom i:nth-of-type(4){transform:rotate(90deg)}.reset-boom i:nth-of-type(5){transform:rotate(120deg)}.reset-boom i:nth-of-type(6){transform:rotate(150deg)}
 @keyframes reset-flash{0%{opacity:0}20%{opacity:1}100%{opacity:0}}@keyframes reset-core{0%{transform:scale(.18) rotate(-20deg)}55%{transform:scale(1.15) rotate(6deg)}100%{transform:scale(1.55) rotate(10deg);opacity:0}}
 
-.playground-dock{flex:0 0 auto;z-index:20;padding:6px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:color-mix(in srgb,var(--canvas) 93%,transparent);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent);box-shadow:0 -6px 20px color-mix(in srgb,var(--ink) 5%,transparent);width:100%}
+.playground-dock{flex:0 0 auto;z-index:20;padding:6px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:color-mix(in srgb,var(--canvas) 97%,white 3%);border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent);box-shadow:0 -6px 20px color-mix(in srgb,var(--ink) 5%,transparent);width:100%}
 
 .toy-shelf{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:860px;margin:0 auto;width:100%;padding-bottom:3px}
 .shelf-colors{display:flex;align-items:center;justify-content:flex-start;gap:6px;width:100%;overflow-x:auto;overflow-y:visible;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:5px 4px 6px;scroll-padding-inline:4px}
@@ -73,32 +73,24 @@ button:disabled,input:disabled{opacity:.32;cursor:not-allowed}
 .transport-scrub input[type=range]::-moz-range-progress{height:8px;border-radius:99px;background:var(--accent)}
 .transport-scrub input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;border:3px solid var(--canvas);background:var(--ink)}
 
-.world-pill{min-width:96px;max-width:130px;height:50px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:16px;background:color-mix(in srgb,var(--canvas) 70%,white 30%);padding:5px 8px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:1fr 1fr;column-gap:6px;text-align:left;align-items:center;cursor:pointer;box-shadow:0 3px 10px color-mix(in srgb,var(--ink) 7%,transparent)}
+.world-pill{min-width:96px;max-width:130px;height:50px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:16px;background:color-mix(in srgb,var(--canvas) 70%,white 30%);padding:5px 8px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:1fr;column-gap:6px;text-align:left;align-items:center;cursor:pointer;box-shadow:0 3px 10px color-mix(in srgb,var(--ink) 7%,transparent)}
 .world-pill:active{filter:brightness(.96)}
-.world-pill b{font-size:11px;align-self:end;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.world-pill small{font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;opacity:.48;align-self:start}
-.world-dots{grid-row:1/3;display:flex;align-items:center}
+.world-pill b{font-size:11px;align-self:center;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.world-dots{grid-row:1;display:flex;align-items:center}
 .world-dots i{width:10px;height:18px;border-radius:8px;border:1.5px solid color-mix(in srgb,var(--canvas) 70%,white 30%);margin-left:-4px}
 .world-dots i:first-child{margin-left:0}
 
 .world-sheet-backdrop{position:fixed;inset:0;z-index:50;background:rgba(16,16,16,.36);display:flex;align-items:flex-end;justify-content:center;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-.world-sheet{width:min(720px,100%);max-height:calc(100% - 8px);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#f8f4ec;color:#211f1c;border-radius:28px 28px 18px 18px;padding:15px;box-shadow:0 24px 70px rgba(0,0,0,.22)}
+.world-sheet{width:min(720px,100%);max-height:calc(100% - 8px);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#000;color:#fff;border-radius:28px 28px 18px 18px;padding:15px;box-shadow:0 24px 70px rgba(0,0,0,.32)}
 .world-sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.world-sheet-head div{display:flex;flex-direction:column}
-.world-sheet-head small{font-size:9px;text-transform:uppercase;letter-spacing:.1em;opacity:.45}
 .world-sheet-head strong{font-size:24px;letter-spacing:-.04em}
-.world-sheet-head button{width:40px;height:40px;border:0;border-radius:14px;background:#ece6dc;display:grid;place-items:center}
-.surprise-world{width:100%;height:46px;border:0;border-radius:16px;background:#211f1c;color:#fff;display:flex;gap:8px;align-items:center;justify-content:center;font-weight:850;margin:6px 0 10px;cursor:pointer}
+.world-sheet-head button{width:40px;height:40px;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:#000;color:#fff;display:grid;place-items:center}
 .world-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.world-card{border:2px solid transparent;border-radius:18px;background:var(--world-bg);color:var(--world-ink);min-height:96px;padding:10px;text-align:left;display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
-.world-card.active{border-color:#211f1c}
+.world-card{border:1px solid rgba(255,255,255,.18);border-radius:18px;background:#000;color:#fff;min-height:72px;padding:12px;text-align:left;display:flex;align-items:flex-end;cursor:pointer;position:relative;overflow:hidden}
+.world-card.active{border-color:#fff}
 .world-card b{font-size:16px;letter-spacing:-.03em}
-.world-card span{font-size:10px;opacity:.6}
-.mini-palette{position:absolute;top:10px;left:10px;display:flex}
-.mini-palette i{width:16px;height:16px;border-radius:50%;margin-left:-4px;border:2px solid var(--world-bg)}
-.mini-palette i:first-child{margin-left:0}
 
-/* Five worlds personality */
+/* World personality */
 .world-dreamland .music-paper{border-radius:36px;box-shadow:0 20px 65px rgba(60,90,160,.17),inset 0 0 72px rgba(100,150,230,.08)}
 .world-dreamland .toy-tool{border-radius:18px}
 .world-dreamland .playhead{box-shadow:0 0 14px #fff,0 0 28px var(--accent)}

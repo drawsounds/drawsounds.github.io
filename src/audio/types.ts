@@ -41,6 +41,7 @@ export interface StudioState {
 export interface TransportState {
   isPlaying: boolean;
   isPreparing: boolean;
+  isAudioReady: boolean;
   audioError?: string;
   currentTime: number;
   totalDuration: number;

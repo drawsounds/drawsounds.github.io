@@ -1,17 +1,28 @@
-import type { PerformerRole, SoundId } from '../audio/types';
+import type { NoteEvent, PerformerRole, SoundId } from '../audio/types';
 
 export type WorldId = 'dreamland' | 'drum_circle' | 'pop_star' | 'rock_monster' | 'salsa_party' | 'weird_cabinet' | 'zouk' | 'flamenco' | 'tango';
 export type CanvasTool = 'crayon' | 'dots' | 'spray' | 'stamp' | 'boom' | 'fill' | 'eraser';
 export type DrawTool = Exclude<CanvasTool, 'eraser'>;
-export type GenericStampKind = 'cat' | 'bunny' | 'bear' | 'frog' | 'panda' | 'puppy' | 'chick' | 'fox' | 'penguin' | 'star' | 'rocket' | 'flower' | 'lightning';
-export type StampKind = string;
+export type StampKind = 'cat' | 'frog' | 'penguin' | 'star' | 'rocket' | 'flower' | 'lightning';
 
 export interface CanvasPoint { x: number; y: number; }
 
-/**
- * Constant-time summary of a pointer gesture. The full point list is retained
- * for drawing, but music does not need to rescan it on every live audition.
- */
+/** Notes captured from the live drawing performance and reused for playback. */
+export interface CapturedPerformanceEvent extends NoteEvent {
+  /** Point index in the original stroke when this audition voice was heard. */
+  pointIndex: number;
+  /** Wall-clock seconds from pointer-down, retained as a secondary feel cue. */
+  gestureTime: number;
+}
+
+export interface LivePerformanceCapture {
+  version: 1;
+  worldId: WorldId;
+  paletteIndex: number;
+  events: CapturedPerformanceEvent[];
+}
+
+/** Incremental gesture summary used by the live music interpreter. */
 export interface GestureStats {
   pointCount: number;
   startX: number;
@@ -45,6 +56,7 @@ export interface CanvasMark {
   erasures?: Array<CanvasPoint & { radius?: number }>;
   fillMaskDataUrl?: string;
   bounds?: { minX: number; maxX: number; minY: number; maxY: number };
+  performance?: LivePerformanceCapture;
 }
 
 export interface Performer {
@@ -63,8 +75,19 @@ export interface Performer {
 export interface StampChoice {
   id: StampKind;
   label: string;
-  glyph: string;
   technique?: string;
+}
+
+export type WorldInteraction = 'float' | 'circle' | 'hook' | 'lock' | 'clave' | 'odd' | 'sway' | 'compas' | 'tension';
+
+export interface WorldFeel {
+  grid: number;
+  snap: number;
+  swing: number;
+  sustain: number;
+  pulse: number[];
+  pulseStep: number;
+  interaction: WorldInteraction;
 }
 
 export interface WorldStudio {
@@ -80,18 +103,17 @@ export interface WorldStudio {
 export interface WorldConfig {
   id: WorldId;
   label: string;
-  littleName: string;
   tempo: number;
   key: number;
   scale: number[];
   progression: number[][];
   totalBeats: number;
   relationReach: number;
-  emotion: string;
   palette: Performer[];
   canvas: string;
   canvasInk: string;
   accent: string;
   stamps: StampChoice[];
+  feel: WorldFeel;
   studio: WorldStudio;
 }

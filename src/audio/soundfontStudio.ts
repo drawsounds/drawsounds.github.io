@@ -4,8 +4,6 @@ import { WORLD_MAP } from '../music/worlds/config';
 import {
   bankOffset,
   fetchRuntimeBank,
-  prefetchRuntimeSoundFonts,
-  requestPersistentAudioStorage,
   soundSpec,
   type RuntimeBank,
 } from './sounds';
@@ -30,27 +28,27 @@ const ROLE_MIX:Record<PerformerRole,{pan:number;room:number;echo:number;level:nu
 
 type PlayBus='transport'|'audition';
 type ActiveNote={m:number;end:number;bus:PlayBus};
-type Strip={channel:number;input:GainNode;pan:StereoPannerNode;room:GainNode;echo:GainNode;active:ActiveNote[];mixKey:string};
+type Strip={channel:number;input:GainNode;pan:StereoPannerNode;room:GainNode;echo:GainNode;active:ActiveNote[];mixPan:number;mixRoom:number;mixEcho:number;mixLevel:number};
 
 export class SoundFontStudio{
   readonly ctx=new AudioContext({latencyHint:'interactive'});
   private master=this.ctx.createGain();
   private safety=this.ctx.createDynamicsCompressor();
-  // The time-based effects are intentionally rebuildable. Stopping a note is
-  // not enough to silence DelayNodes: their buffers and feedback can keep
-  // producing room/echo tails after transport and audition voices are gone.
+  // Rebuild time-based effects to discard delay/feedback tails on hard stop.
   private roomL!:DelayNode;private roomR!:DelayNode;private roomWetL!:GainNode;private roomWetR!:GainNode;
   private echoL!:DelayNode;private echoR!:DelayNode;private echoFbL!:GainNode;private echoFbR!:GainNode;private echoWetL!:GainNode;private echoWetR!:GainNode;private echoFilterL!:BiquadFilterNode;private echoFilterR!:BiquadFilterNode;private panL!:StereoPannerNode;private panR!:StereoPannerNode;
+  private workletModulePromise:Promise<void>|null=null;
   private synthPromise:Promise<WorkletSynthesizer>|null=null;
   private synth:WorkletSynthesizer|null=null;
   private loadingBanks=new Map<RuntimeBank,Promise<void>>();
   private readyBanks=new Set<RuntimeBank>();
   private strips=new Map<number,Strip>();
-  private channelSetup=new Map<number,string>();
+  private channelSetup=new Map<number,number>();
   private generations:Record<PlayBus,number>={transport:0,audition:0};
   private worldId='dreamland';
   private studioKey='';
   private studioState:StudioState|null=null;
+  private preparedSongs=new WeakSet<Song>();
 
   constructor(){
     this.master.gain.value=.8;
@@ -89,25 +87,38 @@ export class SoundFontStudio{
   }
 
   unlockFromGesture(){
-    if(this.ctx.state==='closed')return;
-    if(this.ctx.state!=='running')void this.ctx.resume().catch(()=>{});
-    try{
-      const source=this.ctx.createBufferSource();
-      source.buffer=this.ctx.createBuffer(1,1,this.ctx.sampleRate);
-      source.connect(this.ctx.destination);source.start(0);
-      source.onended=()=>{try{source.disconnect();}catch{/* noop */}};
-    }catch{/* A later gesture retries. */}
-    void requestPersistentAudioStorage();
-    void this.ensureSynth().catch(()=>{});
-    void prefetchRuntimeSoundFonts();
+    if(this.ctx.state==='closed')return Promise.reject(new Error('Audio engine is closed'));
+    const needsUnlock=this.ctx.state!=='running';
+    const resumed=!needsUnlock
+      ? Promise.resolve()
+      : this.ctx.resume().then(()=>undefined);
+    if(needsUnlock){
+      try{
+        const source=this.ctx.createBufferSource();
+        source.buffer=this.ctx.createBuffer(1,1,this.ctx.sampleRate);
+        source.connect(this.ctx.destination);source.start(0);
+        source.onended=()=>{try{source.disconnect();}catch{/* noop */}};
+      }catch{/* A later gesture retries. */}
+    }
+    return resumed;
   }
 
   resumeTransport(){if(this.ctx.state!=='running')void this.ctx.resume().catch(()=>{});}
 
+  private ensureWorkletModule(){
+    if(!this.workletModulePromise){
+      const job=this.ctx.audioWorklet.addModule(resolveAssetUrl('spessasynth_processor.min.js'));
+      this.workletModulePromise=job;
+      void job.catch(()=>{if(this.workletModulePromise===job)this.workletModulePromise=null;});
+    }
+    return this.workletModulePromise;
+  }
+
+
   private ensureSynth(){
     if(!this.synthPromise){
       const job=(async()=>{
-        await this.ctx.audioWorklet.addModule(resolveAssetUrl('spessasynth_processor.min.js'));
+        await this.ensureWorkletModule();
         const synth=new WorkletSynthesizer(this.ctx,{eventsEnabled:false});
         await synth.isReady;
         synth.setLogLevel(false,true,false);
@@ -140,11 +151,14 @@ export class SoundFontStudio{
     const world=WORLD_MAP[worldId as keyof typeof WORLD_MAP];if(!world)return;
     const index=Math.max(0,Math.min(world.palette.length-1,paletteIndex)),performer=world.palette[index];
     if(!performer)return;
-    await this.ensureBank(soundSpec(performer.sound).bank);
-    await this.ensureStrip(AUDITION_CHANNELS[index%AUDITION_CHANNELS.length]);
+    const spec=soundSpec(performer.sound);
+    await this.ensureBank(spec.bank);
+    const strip=await this.ensureStrip(AUDITION_CHANNELS[index%AUDITION_CHANNELS.length]);
+    if(this.synth)this.configureChannel(this.synth,strip.channel,spec.bank,spec.program,this.ctx.currentTime+.003);
   }
 
   async prepareSong(song:Song){
+    if(this.preparedSongs.has(song))return;
     const banks=new Set<RuntimeBank>(),channels=new Set<number>();
     for(const phrase of song.phrases)for(const event of phrase.events){
       banks.add(soundSpec(event.sound).bank);
@@ -153,6 +167,7 @@ export class SoundFontStudio{
     await this.ensureSynth();
     await Promise.all([...banks].map(bank=>this.ensureBank(bank)));
     await Promise.all([...channels].map(channel=>this.ensureStrip(channel)));
+    this.preparedSongs.add(song);
   }
 
   private channelFor(e:NoteEvent,bus:PlayBus){
@@ -166,7 +181,7 @@ export class SoundFontStudio{
     room.gain.value=0;echo.gain.value=0;
     synth.connectChannel(input,channel);
     input.connect(pan);pan.connect(this.master);pan.connect(room);room.connect(this.roomL);room.connect(this.roomR);pan.connect(echo);echo.connect(this.echoL);echo.connect(this.echoR);
-    const strip={channel,input,pan,room,echo,active:[],mixKey:''};this.strips.set(channel,strip);return strip;
+    const strip={channel,input,pan,room,echo,active:[],mixPan:NaN,mixRoom:NaN,mixEcho:NaN,mixLevel:NaN};this.strips.set(channel,strip);return strip;
   }
 
   setStudioState(state:StudioState){
@@ -185,21 +200,19 @@ export class SoundFontStudio{
 
   private mix(strip:Strip,e:NoteEvent,start:number){
     const role=ROLE_MIX[e.channelRole??'melody'],idx=e.channelIndex??0,side=idx%2?1:-1;
-    // Performer room/echo values are explicit mix choices, not extra send amounts.
-    // Adding them to the role defaults made full playback much wetter than the
-    // isolated drawing audition and buried melodic/harmonic tools.
     const pan=Math.max(-.7,Math.min(.7,e.pan??side*role.pan));
     const room=Math.max(0,Math.min(.44,e.room??role.room));
     const echo=Math.max(0,Math.min(.40,e.echo??role.echo));
     const level=role.level;
-    const key=`${pan.toFixed(3)}:${room.toFixed(3)}:${echo.toFixed(3)}:${level.toFixed(3)}`;if(key===strip.mixKey)return;strip.mixKey=key;
+    if(strip.mixPan===pan&&strip.mixRoom===room&&strip.mixEcho===echo&&strip.mixLevel===level)return;
+    strip.mixPan=pan;strip.mixRoom=room;strip.mixEcho=echo;strip.mixLevel=level;
     const now=Math.max(this.ctx.currentTime,start-.002);
     strip.input.gain.setTargetAtTime(level,now,.012);
     strip.pan.pan.setTargetAtTime(pan,now,.01);strip.room.gain.setTargetAtTime(room,now,.015);strip.echo.gain.setTargetAtTime(echo,now,.015);
   }
 
   private configureChannel(synth:WorkletSynthesizer,channel:number,bank:RuntimeBank,program:number,time:number){
-    const key=`${bank}:${program}`;if(this.channelSetup.get(channel)===key)return;
+    const key=bankOffset(bank)*128+program;if(this.channelSetup.get(channel)===key)return;
     synth.controllerChange(channel,0,bankOffset(bank),{time});
     synth.controllerChange(channel,32,0,{time});
     synth.programChange(channel,program,{time});
@@ -214,9 +227,16 @@ export class SoundFontStudio{
     const maxVelocity=spec.bank==='percussion'?92:104,velocity=Math.max(12,Math.min(maxVelocity,Math.round(10+e.velocity*132))),note=Math.max(0,Math.min(127,Math.round(e.midi)));
     const start=Math.max(requested,this.ctx.currentTime+.006),setup=Math.max(this.ctx.currentTime,start-.004),synth=this.synth;
     this.configureChannel(synth,channel,spec.bank,spec.program,setup);this.mix(strip,e,start);
-    strip.active=strip.active.filter(n=>n.end>start-.01);
-    let busVoices=0;for(const n of strip.active)if(n.bus===bus)busVoices++;
-    while(busVoices>=18){const index=strip.active.findIndex(n=>n.bus===bus);if(index<0)break;const old=strip.active[index];strip.active.splice(index,1);busVoices--;synth.noteOff(channel,old.m,{time:start});}
+    let write=0,busVoices=0;
+    for(let i=0;i<strip.active.length;i++){
+      const n=strip.active[i];if(n.end<=start-.01)continue;
+      strip.active[write++]=n;if(n.bus===bus)busVoices++;
+    }
+    strip.active.length=write;
+    // Give transport a little more headroom than the audition bus so preserving
+    // that captured stack does not cause playback-only voice stealing.
+    const voiceLimit=bus==='transport'?(world.id==='dreamland'?28:22):18;
+    while(busVoices>=voiceLimit){const index=strip.active.findIndex(n=>n.bus===bus);if(index<0)break;const old=strip.active[index];strip.active.splice(index,1);busVoices--;synth.noteOff(channel,old.m,{time:start});}
     const on=(m:number,v:number,t:number,off:number)=>{synth.noteOn(channel,m,v,{time:t});synth.noteOff(channel,m,{time:off});strip.active.push({m,end:off,bus});};
     const target=e.glideToMidi===undefined?null:Math.max(0,Math.min(127,Math.round(e.glideToMidi)));
     if(target!==null&&target!==note&&spec.bank!=='percussion'){
@@ -245,7 +265,7 @@ export class SoundFontStudio{
       const stripBus=TRANSPORT_CHANNELS.includes(strip.channel)?'transport':'audition';
       if(stripBus!==bus)continue;
       try{strip.input.gain.cancelScheduledValues(now);strip.input.gain.setValueAtTime(0,now);}catch{/* noop */}
-      strip.mixKey='';
+      strip.mixPan=strip.mixRoom=strip.mixEcho=strip.mixLevel=NaN;
     }
     void this.ensureSynth().then(synth=>{
       for(const strip of this.strips.values()){
@@ -268,7 +288,7 @@ export class SoundFontStudio{
     this.generations.transport++;this.generations.audition++;
     const now=this.ctx.currentTime;
     for(const strip of this.strips.values()){
-      strip.active=[];strip.mixKey='';
+      strip.active=[];strip.mixPan=strip.mixRoom=strip.mixEcho=strip.mixLevel=NaN;
       try{strip.input.gain.cancelScheduledValues(now);strip.input.gain.setValueAtTime(0,now);}catch{/* noop */}
     }
     this.channelSetup.clear();
