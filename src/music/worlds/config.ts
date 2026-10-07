@@ -47,51 +47,51 @@ const tangoStamps = seven({ cat: 'Cat · marcato', frog: 'Frog · síncopa', pan
 export const WORLDS: WorldConfig[] = [
     {
         id: 'dreamland', label: 'Dreamland', tempo: 68, key: 50, scale: PENTA, progression: [[0, 7, 14], [5, 9, 12], [2, 7, 9], [0, 5, 9]], totalBeats: 48, relationReach: .052, canvas: '#0b1020', canvasInk: '#f4f7ff', accent: '#9fb8ff', stamps: dreamStamps, feel: F(.5, .06, .10, 1.26, [1, .98, 1.02, .97], 1, 'float'), studio: { master: .76, room: .32, echo: .34, feedback: .50, release: 1.38, echoBeats: [1.5, 2], lowpass: 4800 }, palette: [
-            P('celestial harp', '#2dd4bf', '#0b221e', 'harmony', 'harp', 4, { room: .26, echo: .18 }),
-            P('starlight chimes', '#fbbf24', '#342605', 'melody', 'tubular_bells', 5, { room: .24, echo: .24 }),
-            P('nebula pad', '#c084fc', '#2a0f44', 'texture', 'warm_pad', 4, { room: .34, echo: .26 }),
-            P('deep slumber', '#38bdf8', '#082a3d', 'bass', 'lately_bass', 2, { room: .08, echo: .08 }),
-            P('angel breath', '#f472b6', '#3b0d26', 'human', 'choir_aahs', 4, { room: .30, echo: .18 }),
-            P('dream comet', '#f1f5f9', '#1e293b', 'texture', 'ocarina', 5, { room: .30, echo: .30 }),
+            P('celestial harp', '#10b981', '#022c22', 'harmony', 'harp', 4, { room: .26, echo: .18 }),
+            P('starlight chimes', '#f59e0b', '#451a03', 'melody', 'tubular_bells', 5, { room: .24, echo: .24 }),
+            P('nebula pad', '#a855f7', '#faf5ff', 'texture', 'warm_pad', 4, { room: .34, echo: .26 }),
+            P('deep slumber', '#3b82f6', '#eff6ff', 'bass', 'lately_bass', 2, { room: .08, echo: .08 }),
+            P('angel breath', '#f43f5e', '#fff1f2', 'human', 'choir_aahs', 4, { room: .30, echo: .18 }),
+            P('dream comet', '#06b6d4', '#083344', 'texture', 'ocarina', 5, { room: .30, echo: .30 }),
         ]
     },
     {
         id: 'drum_circle', label: 'Drum Circle', tempo: 108, key: 48, scale: PENTA, progression: [[0, 7], [0, 5], [0, 7], [3, 7]], totalBeats: 32, relationReach: .060, canvas: '#f3e4c8', canvasInk: '#3a2618', accent: '#c65b32', stamps: drumStamps, feel: F(.25, .30, .12, .86, [1.08, .96, 1.03, .94, 1.05, .97], .5, 'circle'), studio: { master: .80, room: .24, echo: .09, feedback: .18, release: 1.04, echoBeats: [.33, .5], lowpass: 3700 }, palette: [
-            P('djembe bass', '#dc2626', '#fff1f1', 'drums', 'world_percussion', 3, { drumNotes: [48, 50, 64, 69] }),
-            P('hand drum', '#ea580c', '#fff3ea', 'drums', 'world_percussion', 3, { drumNotes: [51, 52, 53, 62, 63, 65] }),
+            P('djembe bass', '#e11d48', '#fff1f2', 'drums', 'world_percussion', 3, { drumNotes: [48, 50, 64, 69] }),
+            P('talking drum', '#eab308', '#422006', 'drums', 'world_percussion', 3, { drumNotes: [51, 52, 53, 62, 63, 65] }),
             P('dun-dun', '#2563eb', '#eff6ff', 'drums', 'world_percussion', 2, { drumNotes: [64, 66, 69] }),
-            P('shaker', '#eab308', '#3d2e03', 'drums', 'world_percussion', 4, { drumNotes: [54, 55, 56, 67, 68] }),
-            P('wood claves', '#16a34a', '#f1fcf4', 'drums', 'world_percussion', 4, { drumNotes: [59, 60, 61] }),
-            P('rock kit', '#f59e0b', '#2e2202', 'drums', 'rock_kit', 3, { drumNotes: [48, 50, 52, 53, 58, 59, 60] }),
+            P('shekere & shaker', '#ea580c', '#fff7ed', 'drums', 'world_percussion', 4, { drumNotes: [54, 55, 56, 67, 68] }),
+            P('wood claves', '#059669', '#ecfdf5', 'drums', 'world_percussion', 4, { drumNotes: [59, 60, 61] }),
+            P('bata & timba', '#7c3aed', '#faf5ff', 'drums', 'world_percussion', 3, { drumNotes: [60, 62, 63, 65, 66] }),
         ]
     },
     {
         id: 'pop_star', label: 'Pop Star', tempo: 122, key: 61, scale: MAJOR, progression: [[0, 4, 7, 11], [9, 0, 4, 7], [5, 9, 0, 4], [7, 11, 2, 5]], totalBeats: 40, relationReach: .047, canvas: '#fff6fb', canvasInk: '#241724', accent: '#ff3e93', stamps: popStamps, feel: F(.25, .34, .04, .96, [1.07, .97, 1.02, .96], 1, 'hook'), studio: { master: .80, room: .15, echo: .20, feedback: .32, release: 1.10, echoBeats: [.75, 1], lowpass: 6500 }, palette: [
-            P('saw hook', '#eab308', '#3d2e03', 'melody', 'saw_hook', 5, { echo: .14 }),
-            P('synth vox', '#ec4899', '#fff0f7', 'human', 'synth_vox', 4, { room: .19, echo: .16 }),
+            P('saw hook', '#eab308', '#422006', 'melody', 'saw_hook', 5, { echo: .14 }),
+            P('synth vox', '#ec4899', '#fff1f7', 'human', 'synth_vox', 4, { room: .19, echo: .16 }),
+            P('punchy bass', '#0284c7', '#f0f9ff', 'bass', 'lately_bass', 2),
             P('electric keys', '#8b5cf6', '#faf5ff', 'harmony', 'electric_piano', 4),
-            P('punchy bass', '#0284c7', '#032a3d', 'bass', 'lately_bass', 2),
-            P('pop drums', '#ef4444', '#fff1f3', 'drums', 'pop_kit', 3, { drumNotes: [36, 38, 39, 42, 46] }),
-            P('crystal shimmer', '#10b981', '#042f20', 'texture', 'crystal', 5, { room: .26, echo: .23 }),
+            P('crystal shimmer', '#10b981', '#ecfdf5', 'texture', 'crystal', 5, { room: .26, echo: .23 }),
+            P('pop drums', '#f43f5e', '#fff1f2', 'drums', 'pop_kit', 3, { drumNotes: [36, 38, 39, 42, 46] }),
         ]
     },
     {
         id: 'rock_monster', label: 'Rock Monster', tempo: 142, key: 40, scale: MINOR_PENTA, progression: [[0, 7, 12], [3, 10, 15], [5, 12, 17], [0, 7, 10]], totalBeats: 32, relationReach: .043, canvas: '#111214', canvasInk: '#f2eee8', accent: '#d73b2f', stamps: rockStamps, feel: F(.5, .42, 0, .84, [1.10, .94, 1.06, .93], 1, 'lock'), studio: { master: .84, room: .21, echo: .29, feedback: .47, release: 1.16, echoBeats: [.75, 1.25], lowpass: 4300 }, palette: [
             P('rock guitar', '#ef4444', '#fff1f1', 'harmony', 'clean_guitar', 4, { echo: .12 }),
-            P('drive bass', '#3b82f6', '#eff6ff', 'bass', 'finger_bass', 3),
-            P('rock kit', '#f59e0b', '#2e2202', 'drums', 'rock_kit', 3, { drumNotes: [48, 50, 52, 53, 58, 59, 60] }),
+            P('drive bass', '#0284c7', '#f0f9ff', 'bass', 'finger_bass', 3),
+            P('rock kit', '#f59e0b', '#451a03', 'drums', 'rock_kit', 3, { drumNotes: [48, 50, 52, 53, 58, 59, 60] }),
             P('solo lead', '#a855f7', '#faf5ff', 'melody', 'clean_guitar', 5, { echo: .17 }),
-            P('arena shout', '#ec4899', '#fff1f7', 'human', 'choir_aahs', 4, { room: .18, echo: .16 }),
-            P('amp feedback', '#14b8a6', '#effefb', 'texture', 'fret_noise', 4, { room: .25, echo: .34 }),
+            P('arena shout', '#84cc16', '#365314', 'human', 'choir_aahs', 4, { room: .18, echo: .16 }),
+            P('amp feedback', '#ec4899', '#fff1f7', 'texture', 'fret_noise', 4, { room: .25, echo: .34 }),
         ]
     },
     {
         id: 'salsa_party', label: 'Salsa Party', tempo: 168, key: 60, scale: DORIAN, progression: [[0, 4, 7, 10], [5, 9, 0, 4], [7, 11, 2, 5], [0, 4, 7, 10]], totalBeats: 36, relationReach: .055, canvas: '#fff4df', canvasInk: '#3b2013', accent: '#d94a2b', stamps: salsaStamps, feel: F(.25, .32, .10, .90, [1.08, .95, 1.02, 1.06, .94, 1.03, .98, .96], .5, 'clave'), studio: { master: .81, room: .19, echo: .15, feedback: .27, release: 1.07, echoBeats: [.5, .75], lowpass: 5500 }, palette: [
             P('montuno piano', '#eab308', '#3b2b02', 'harmony', 'piano', 4),
             P('salsa brass', '#dc2626', '#fff1f1', 'melody', 'brass', 4),
-            P('congas & timbales', '#0891b2', '#042f3e', 'drums', 'world_percussion', 4, { drumNotes: [62, 63, 64, 65, 60, 67, 68, 57] }),
+            P('congas & timbales', '#059669', '#ecfdf5', 'drums', 'world_percussion', 4, { drumNotes: [62, 63, 64, 65, 60, 67, 68, 57] }),
             P('baby bass', '#2563eb', '#f0f6ff', 'bass', 'acoustic_bass', 2),
-            P('marimba & bells', '#16a34a', '#f0fcf4', 'melody', 'marimba', 5, { echo: .10 }),
+            P('marimba & bells', '#ea580c', '#fff7ed', 'melody', 'marimba', 5, { echo: .10 }),
             P('coro shouts', '#c026d3', '#fdf4ff', 'human', 'choir_aahs', 4, { echo: .10 }),
         ]
     },
@@ -100,39 +100,39 @@ export const WORLDS: WorldConfig[] = [
             P('theremin', '#8b5cf6', '#faf5ff', 'melody', 'theremin', 5),
             P('hurdy gurdy', '#ea580c', '#fff3ea', 'bass', 'hurdy_gurdy', 3),
             P('glass harmonica', '#06b6d4', '#083344', 'harmony', 'glass_harmonica', 5),
-            P('musical saw', '#10b981', '#042e20', 'melody', 'musical_saw', 5),
-            P('waterphone', '#3b82f6', '#eff6ff', 'texture', 'waterphone', 5),
-            P('nyckelharpa', '#db2777', '#fff0f7', 'melody', 'nyckelharpa', 4),
+            P('musical saw', '#84cc16', '#365314', 'melody', 'musical_saw', 5),
+            P('waterphone', '#1d4ed8', '#eff6ff', 'texture', 'waterphone', 5),
+            P('nyckelharpa', '#e11d48', '#fff1f2', 'melody', 'nyckelharpa', 4),
         ]
     },
     {
         id: 'zouk', label: 'Zouk', tempo: 98, key: 57, scale: MINOR, progression: [[0, 3, 7, 10], [8, 0, 3, 7], [5, 8, 0, 3], [10, 2, 5, 8]], totalBeats: 40, relationReach: .052, canvas: '#142238', canvasInk: '#fff5ef', accent: '#ff7b68', stamps: zoukStamps, feel: F(.5, .24, .16, 1.04, [1.05, .96, 1.02, .98], 1, 'sway'), studio: { master: .81, room: .19, echo: .24, feedback: .38, release: 1.14, echoBeats: [.75, 1.25], lowpass: 5600 }, palette: [
             P('zouk guitar', '#f59e0b', '#3d2503', 'harmony', 'clean_guitar', 4, { echo: .14 }),
-            P('warm bass', '#06b6d4', '#042b33', 'bass', 'finger_bass', 2),
+            P('warm bass', '#0d9488', '#ccfbf1', 'bass', 'finger_bass', 2),
             P('zouk groove', '#ef4444', '#fff1f3', 'drums', 'pop_kit', 3, { drumNotes: [36, 38, 42, 46, 39] }),
-            P('sax lead', '#10b981', '#042e20', 'melody', 'alto_sax', 4, { echo: .16 }),
-            P('rhodes keys', '#8b5cf6', '#28144f', 'harmony', 'electric_piano', 4),
+            P('sax lead', '#84cc16', '#365314', 'melody', 'alto_sax', 4, { echo: .16 }),
+            P('rhodes keys', '#3b82f6', '#eff6ff', 'harmony', 'electric_piano', 4),
             P('choral sway', '#ec4899', '#fff0f7', 'human', 'voice_oohs', 4, { room: .20, echo: .17 }),
         ]
     },
     {
         id: 'flamenco', label: 'Flamenco', tempo: 144, key: 52, scale: PHRYGIAN, progression: [[0, 1, 5, 7], [0, 5, 7, 8], [3, 1, 0, 7], [0, 1, 5, 0]], totalBeats: 36, relationReach: .048, canvas: '#f7e8d0', canvasInk: '#2b130f', accent: '#b63b2e', stamps: flamencoStamps, feel: F(.25, .34, .05, .82, [1.08, .96, .99, 1.05, .95, 1.02, 1.07, .94, 1.01, 1.06, .96, 1.03], .5, 'compas'), studio: { master: .82, room: .16, echo: .10, feedback: .18, release: 1.06, echoBeats: [.33, .5], lowpass: 6200 }, palette: [
-            P('Spanish guitar', '#f59e0b', '#3d2503', 'harmony', 'nylon_guitar', 4, { room: .13 }),
+            P('Spanish guitar', '#eab308', '#3d2503', 'harmony', 'nylon_guitar', 4, { room: .13 }),
             P('cajón', '#dc2626', '#fff1f1', 'drums', 'world_percussion', 3, { drumNotes: [48, 49, 50] }),
-            P('palmas', '#f97316', '#3f1702', 'drums', 'world_percussion', 4, { drumNotes: [59, 61, 60] }),
+            P('palmas', '#2563eb', '#eff6ff', 'drums', 'world_percussion', 4, { drumNotes: [59, 61, 60] }),
             P('falseta', '#c026d3', '#fdf4ff', 'melody', 'nylon_guitar', 5, { room: .16, echo: .06 }),
-            P('bajo flamenco', '#2563eb', '#eff5ff', 'bass', 'acoustic_bass', 2),
-            P('jaleo shouts', '#16a34a', '#f4fbe9', 'human', 'choir_aahs', 4, { room: .15 }),
+            P('bajo flamenco', '#059669', '#ecfdf5', 'bass', 'acoustic_bass', 2),
+            P('jaleo shouts', '#ea580c', '#3f1702', 'human', 'choir_aahs', 4, { room: .15 }),
         ]
     },
     {
         id: 'tango', label: 'Tango', tempo: 126, key: 57, scale: HARM_MINOR, progression: [[0, 3, 7, 11], [5, 8, 0, 3], [7, 11, 2, 5], [0, 3, 7, 0]], totalBeats: 40, relationReach: .050, canvas: '#151619', canvasInk: '#f4e9da', accent: '#a93136', stamps: tangoStamps, feel: F(.25, .40, -.04, .88, [1.10, .94, 1.04, .97], 1, 'tension'), studio: { master: .81, room: .20, echo: .12, feedback: .22, release: 1.11, echoBeats: [.5, .75], lowpass: 5400 }, palette: [
             P('bandoneón', '#dc2626', '#fff1f1', 'harmony', 'bandoneon', 4, { room: .22, echo: .08 }),
             P('violin', '#f59e0b', '#3d2503', 'melody', 'violin', 5, { room: .24 }),
-            P('piano tango', '#f1f5f9', '#1e293b', 'harmony', 'upright_piano', 4),
+            P('piano tango', '#fef08a', '#422006', 'harmony', 'upright_piano', 4),
             P('contrabajo', '#2563eb', '#eff6ff', 'bass', 'acoustic_bass', 2),
-            P('cello dramático', '#8b5cf6', '#faf5ff', 'melody', 'cello', 3),
-            P('tenor sax', '#10b981', '#042e20', 'melody', 'tenor_sax', 4, { room: .25, echo: .10 }),
+            P('cello dramático', '#059669', '#ecfdf5', 'melody', 'cello', 3),
+            P('tenor sax', '#9333ea', '#faf5ff', 'melody', 'tenor_sax', 4, { room: .25, echo: .10 }),
         ]
     },
 ];
