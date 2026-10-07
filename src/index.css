@@ -838,7 +838,8 @@ button:disabled,input:disabled {
   display:block;
   width:100%
 }
-/* World personality */ .world-dreamland .music-paper {
+/* World-specific canvas and tool styling. */
+.world-dreamland .music-paper {
   border-radius:36px;
   box-shadow:0 20px 65px rgba(60,90,160,.17),inset 0 0 72px rgba(100,150,230,.08)
 }

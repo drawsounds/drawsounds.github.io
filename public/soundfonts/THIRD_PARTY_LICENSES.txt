@@ -1916,3 +1916,44 @@ http://freepats.zenvoid.org/Reed/saxophone.html#TenorSax
 
 Published under the terms of Creative Commons CC0 public domain dedication:
 https://creativecommons.org/publicdomain/zero/1.0/
+
+----------------------------------------------------------------
+SOURCE: DrawSounds soundfont audit additions, 2026-10-07
+----------------------------------------------------------------
+All new third-party recordings listed below are Creative Commons CC0 1.0.
+The existing full CC0 legal text above also applies to these recordings:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Djembe — carlmartin, Freesound
+  https://freesound.org/people/carlmartin/sounds/158960/ — Center
+  https://freesound.org/people/carlmartin/sounds/158961/ — Center closed
+  https://freesound.org/people/carlmartin/sounds/158968/ — Rim
+  https://freesound.org/people/carlmartin/sounds/158969/ — Hi Rim
+
+Shekere / Agbê — Sassaby, Freesound
+  https://freesound.org/people/Sassaby/sounds/506383/
+  One hit on an Agbê made in Olinda, Brazil.
+
+50 Timbales Hits — hello_flowers, Freesound
+  https://freesound.org/people/hello_flowers/sounds/41196/
+  Only two isolated low/high hits are included, not the whole collection.
+  Source cuts: 0–1.3 seconds and 12.15–14.4 seconds, then silence trimmed.
+
+Rubbed wine glasses and Cowbell 1 — Versilian Studios LLC
+  Versilian Community Sample Library (VCSL)
+  https://versilian-studios.com/vcsl/
+  https://github.com/sgossner/VCSL
+  Source revision: c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e
+  Four slow glass sustains and three cowbell hit dynamics.
+  Glasses are used as a compact glass-harmonica approximation.
+
+Freesound inputs use the publicly supplied high-quality MP3 renditions, not
+lossless original WAV downloads. VCSL inputs use the original WAV recordings.
+DrawSounds modifications: mono mix, 32 kHz sample rate, silence trimming, peak
+balancing, short edge fades, selected timbale cuts, crossfaded glass sustain loops,
+key mapping and Vorbis SF3 compression. Original compressed seed samples are
+retained unchanged where possible. Exact source filenames, URLs and checksums
+are in scripts/soundfont-sources.json in the repository.
+
+The medialint talking-drum pack was investigated but is not included: its primary
+source uses Sampling+ terms rather than the CC0 claimed by a third-party mirror.

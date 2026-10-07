@@ -57,12 +57,12 @@ export const WORLDS: WorldConfig[] = [
     },
     {
         id: 'drum_circle', label: 'Drum Circle', tempo: 108, key: 48, scale: PENTA, progression: [[0, 7], [0, 5], [0, 7], [3, 7]], totalBeats: 32, relationReach: .060, canvas: '#f3e4c8', canvasInk: '#3a2618', accent: '#c65b32', stamps: drumStamps, feel: F(.25, .30, .12, .86, [1.08, .96, 1.03, .94, 1.05, .97], .5, 'circle'), studio: { master: .80, room: .24, echo: .09, feedback: .18, release: 1.04, echoBeats: [.33, .5], lowpass: 3700 }, palette: [
-            P('djembe bass', '#e11d48', '#fff1f2', 'drums', 'world_percussion', 3, { drumNotes: [48, 50, 64, 69] }),
-            P('talking drum', '#eab308', '#422006', 'drums', 'world_percussion', 3, { drumNotes: [51, 52, 53, 62, 63, 65] }),
-            P('dun-dun', '#2563eb', '#eff6ff', 'drums', 'world_percussion', 2, { drumNotes: [64, 66, 69] }),
-            P('shekere & shaker', '#ea580c', '#fff7ed', 'drums', 'world_percussion', 4, { drumNotes: [54, 55, 56, 67, 68] }),
-            P('wood claves', '#059669', '#ecfdf5', 'drums', 'world_percussion', 4, { drumNotes: [59, 60, 61] }),
-            P('bata & timba', '#7c3aed', '#faf5ff', 'drums', 'world_percussion', 3, { drumNotes: [60, 62, 63, 65, 66] }),
+            P('djembe', '#e11d48', '#fff1f2', 'drums', 'djembe', 3, { drumNotes: [48, 49, 50, 51] }),
+            P('bongos', '#eab308', '#422006', 'drums', 'world_percussion', 3, { drumNotes: [51, 52, 53] }),
+            P('low conga & darbuka', '#2563eb', '#eff6ff', 'drums', 'world_percussion', 2, { drumNotes: [64, 66, 69] }),
+            P('shekere & shaker', '#ea580c', '#fff7ed', 'drums', 'shekere', 4, { drumNotes: [54, 55, 56] }),
+            P('wood claves', '#059669', '#ecfdf5', 'drums', 'world_percussion', 4, { drumNotes: [60] }),
+            P('conga ensemble', '#7c3aed', '#faf5ff', 'drums', 'world_percussion', 3, { drumNotes: [62, 63, 65, 66] }),
         ]
     },
     {
@@ -89,7 +89,7 @@ export const WORLDS: WorldConfig[] = [
         id: 'salsa_party', label: 'Salsa Party', tempo: 168, key: 60, scale: DORIAN, progression: [[0, 4, 7, 10], [5, 9, 0, 4], [7, 11, 2, 5], [0, 4, 7, 10]], totalBeats: 36, relationReach: .055, canvas: '#fff4df', canvasInk: '#3b2013', accent: '#d94a2b', stamps: salsaStamps, feel: F(.25, .32, .10, .90, [1.08, .95, 1.02, 1.06, .94, 1.03, .98, .96], .5, 'clave'), studio: { master: .81, room: .19, echo: .15, feedback: .27, release: 1.07, echoBeats: [.5, .75], lowpass: 5500 }, palette: [
             P('montuno piano', '#eab308', '#3b2b02', 'harmony', 'piano', 4),
             P('salsa brass', '#dc2626', '#fff1f1', 'melody', 'brass', 4),
-            P('congas & timbales', '#059669', '#ecfdf5', 'drums', 'world_percussion', 4, { drumNotes: [62, 63, 64, 65, 60, 67, 68, 57] }),
+            P('congas & timbales', '#059669', '#ecfdf5', 'drums', 'salsa_kit', 4, { drumNotes: [62, 63, 64, 65, 60, 67, 68, 57] }),
             P('baby bass', '#2563eb', '#f0f6ff', 'bass', 'acoustic_bass', 2),
             P('marimba & bells', '#ea580c', '#fff7ed', 'melody', 'marimba', 5, { echo: .10 }),
             P('coro shouts', '#c026d3', '#fdf4ff', 'human', 'choir_aahs', 4, { echo: .10 }),

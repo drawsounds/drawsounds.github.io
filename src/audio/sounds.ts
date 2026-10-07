@@ -39,10 +39,13 @@ export const SOUNDS = {
     nyckelharpa: { bank: 'instruments', program: 29 },
     ondioline: { bank: 'instruments', program: 30 },
     musical_saw: { bank: 'instruments', program: 31 },
-    glass_harmonica: { bank: 'instruments', program: 10 },
+    glass_harmonica: { bank: 'instruments', program: 32 },
     pop_kit: { bank: 'percussion', program: 0 },
     world_percussion: { bank: 'percussion', program: 1 },
     rock_kit: { bank: 'percussion', program: 2 },
+    djembe: { bank: 'percussion', program: 3 },
+    shekere: { bank: 'percussion', program: 4 },
+    salsa_kit: { bank: 'percussion', program: 5 },
 } as const satisfies Record<string, {
     bank: RuntimeBank;
     program: number;
@@ -50,6 +53,41 @@ export const SOUNDS = {
 export type SoundId = keyof typeof SOUNDS;
 export const soundSpec = (sound: SoundId) => SOUNDS[sound];
 export const bankOffset = (bank: RuntimeBank) => BANKS[bank].offset;
+// Supported registers include stamps, glides, bass octave drops and relationship
+// harmonies. Keep a margin for continuous gestures; don't trim to a demo song.
+export const PITCH_RANGES = {
+    piano: [36, 96], lately_bass: [12, 72], warm_pad: [28, 96],
+    tubular_bells: [40, 108], harp: [28, 96], choir_aahs: [24, 104],
+    ocarina: [40, 108], saw_hook: [48, 112], electric_piano: [36, 104],
+    synth_vox: [36, 100], crystal: [48, 120], finger_bass: [12, 60],
+    clean_guitar: [24, 100], fret_noise: [24, 84], acoustic_bass: [12, 72],
+    brass: [36, 108], marimba: [48, 120], voice_oohs: [36, 100],
+    alto_sax: [36, 104], nylon_guitar: [36, 108], bandoneon: [36, 104],
+    violin: [48, 116], upright_piano: [36, 104], cello: [24, 92],
+    tenor_sax: [36, 104], flamenco_strum: [28, 108], theremin: [24, 112],
+    hurdy_gurdy: [24, 100], waterphone: [36, 120], nyckelharpa: [24, 112],
+    ondioline: [24, 100], musical_saw: [24, 112], glass_harmonica: [36, 120],
+} as const satisfies Record<Exclude<SoundId, 'pop_kit' | 'world_percussion' | 'rock_kit' | 'djembe' | 'shekere' | 'salsa_kit'>, readonly [number, number]>;
+export function fitSoundRegister(sound: SoundId, midi: number): number {
+    const range = PITCH_RANGES[sound as keyof typeof PITCH_RANGES];
+    let note = Math.max(0, Math.min(127, Math.round(midi)));
+    if (!range)
+        return note;
+    while (note < range[0]) note += 12;
+    while (note > range[1]) note -= 12;
+    return note;
+}
+// These limits are also used by the bank builder and coverage audit. Percussion
+// variants are encoded in velocity zones, so never send values outside the bank.
+export function soundVelocityRange(sound: SoundId): readonly [number, number] {
+    return SOUNDS[sound].bank === 'percussion'
+        ? (sound === 'pop_kit' ? [12, 90] : [16, 72])
+        : [12, 104];
+}
+export function noteVelocity(sound: SoundId, strength: number): number {
+    const [min, max] = soundVelocityRange(sound);
+    return Math.max(min, Math.min(max, Math.round(min + strength * (max - min))));
+}
 function assetUrl(path: string) {
     const clean = path.startsWith('/') ? path.slice(1) : path;
     try {
@@ -61,21 +99,11 @@ function assetUrl(path: string) {
         return `${prefix}${clean}`;
     }
 }
-const bankCache = new Map<RuntimeBank, Promise<ArrayBuffer>>();
-export function fetchRuntimeBank(bank: RuntimeBank): Promise<ArrayBuffer> {
-    let job = bankCache.get(bank);
-    if (!job) {
-        job = fetch(assetUrl(BANKS[bank].path))
-            .then(response => {
-            if (!response.ok)
-                throw new Error(`Audio asset unavailable (${response.status})`);
-            return response.arrayBuffer();
-        });
-        bankCache.set(bank, job);
-        job.catch(() => {
-            if (bankCache.get(bank) === job)
-                bankCache.delete(bank);
-        });
-    }
-    return job.then(buf => buf.slice(0));
+export async function fetchRuntimeBank(bank: RuntimeBank): Promise<ArrayBuffer> {
+    // The studio coalesces in-flight loads. Transfer the fetched buffer directly
+    // to the worklet instead of keeping a second compressed copy in JS memory.
+    const response = await fetch(assetUrl(BANKS[bank].path));
+    if (!response.ok)
+        throw new Error(`Audio asset unavailable (${response.status})`);
+    return response.arrayBuffer();
 }

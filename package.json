@@ -9,7 +9,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run build",
+    "check": "npm run typecheck && npm run audio:check && npm run build",
+    "audio:check": "node scripts/audit-soundfonts.mjs",
+    "audio:inventory": "node scripts/audit-soundfonts.mjs --write",
+    "audio:build": "node scripts/build-soundfonts.mjs",
     "lint": "npm run typecheck"
   },
   "dependencies": {
@@ -18,14 +21,16 @@
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "spessasynth_lib": "^4.3.14",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.3.0",
-    "spessasynth_lib": "^4.3.14"
+    "vite": "^8.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "jiti": "2.7.0",
+    "spessasynth_core": "4.3.22",
     "typescript": "^7.0.2"
   }
 }

@@ -2,11 +2,22 @@ import type { NoteEvent, Phrase } from '../audio/types';
 import { atOrThrow, cyclicAt, firstOrThrow } from '../utils/arrays';
 import type { CanvasMark, CanvasPoint, GestureStats, Performer, WorldConfig } from './canvasTypes';
 const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
-const rng = (seed: number) => () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-const hash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-} return h >>> 0; };
+function rng(seed: number): () => number {
+    return () => {
+        let value = seed += 0x6D2B79F5;
+        value = Math.imul(value ^ value >>> 15, value | 1);
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+        return ((value ^ value >>> 14) >>> 0) / 4294967296;
+    };
+}
+function hash(text: string): number {
+    let value = 2166136261;
+    for (let index = 0; index < text.length; index++) {
+        value ^= text.charCodeAt(index);
+        value = Math.imul(value, 16777619);
+    }
+    return value >>> 0;
+}
 type EventSource = Partial<NoteEvent> & Pick<NoteEvent, 'sound'>;
 export type PhraseContour = 'rise' | 'fall' | 'arch' | 'valley' | 'oscillate' | 'still';
 export type PhraseCadence = 'open' | 'closed' | 'continue';
@@ -33,7 +44,28 @@ export interface CompileResult {
     phrase: Phrase;
     motif?: PhraseMotif;
 }
-export function createGestureStats(p: CanvasPoint): GestureStats { return { pointCount: 1, startX: p.x, startY: p.y, lastX: p.x, lastY: p.y, minX: p.x, maxX: p.x, minY: p.y, maxY: p.y, sumY: p.y, totalDistance: 0, upDistance: 0, downDistance: 0, directionChanges: 0, lastDx: 0, lastDy: 0, minYIndex: 0, maxYIndex: 0 }; }
+export function createGestureStats(point: CanvasPoint): GestureStats {
+    return {
+        pointCount: 1,
+        startX: point.x,
+        startY: point.y,
+        lastX: point.x,
+        lastY: point.y,
+        minX: point.x,
+        maxX: point.x,
+        minY: point.y,
+        maxY: point.y,
+        sumY: point.y,
+        totalDistance: 0,
+        upDistance: 0,
+        downDistance: 0,
+        directionChanges: 0,
+        lastDx: 0,
+        lastDy: 0,
+        minYIndex: 0,
+        maxYIndex: 0,
+    };
+}
 export function extendGestureStats(g: GestureStats, p: CanvasPoint): GestureStats {
     const dx = p.x - g.lastX, dy = p.y - g.lastY, d = Math.hypot(dx, dy), lastD = Math.hypot(g.lastDx, g.lastDy), index = g.pointCount;
     if (d > .001 && lastD > .001) {
@@ -236,8 +268,11 @@ function motifFromIntent(intent: PhraseIntent, length: number, rhythm: readonly 
         .join(',')}`;
     return { steps, rhythm: useRhythm, gate, signature };
 }
-function midiForStep(w: WorldConfig, p: Performer, intent: PhraseIntent, step: number, absolute: number, total: number, previous?: number, chordBias = false, maxLeap = 8) { const target = targetMidi(w, p, intent.centerY) + step * 2; return nearest(w, target, absolute, total, chordBias, previous, maxLeap); }
-// Traditional & World-Specific Stamp Vocabularies
+function midiForStep(w: WorldConfig, p: Performer, intent: PhraseIntent, step: number, absolute: number, total: number, previous?: number, chordBias = false, maxLeap = 8): number {
+    const target = targetMidi(w, p, intent.centerY) + step * 2;
+    return nearest(w, target, absolute, total, chordBias, previous, maxLeap);
+}
+// Each world interprets the shared stamps through its own musical vocabulary.
 function flamencoTechnique(mark: CanvasMark, w: WorldConfig, p: Performer, total: number, i: number) {
     const beat = beatSeconds(w), pt = mark.points[0] || { x: .5, y: .5 }, base = w.key + (p.octave - 4) * 12, ch = chord(w, pt.x * total, total);
     const choice = w.stamps.find(s => s.id === mark.stampKind);
@@ -1449,13 +1484,9 @@ function traditionalTexture(mark: CanvasMark, w: WorldConfig, p: Performer, tota
     return out;
 }
 /**
- * Rebuild a continuous mark from the notes the player actually heard while
- * drawing it. This is deliberately a timing pass, not a recomposition pass:
- * pitch, instrument, velocity, articulation, pan and sends remain intact.
- *
- * Path position provides the main musical clock so playback flows across the
- * canvas; a small amount of the original finger timing keeps human feel. The
- * only groove operation is a gentle pull toward a local grid.
+ * Retain captured pitches, instruments and articulation while fitting playback
+ * to the path and gesture timing. World feel adjusts grid, swing, sustain and
+ * pulse gain, so durations and velocities may change.
  */
 function capturedPerformancePhrase(mark: CanvasMark, w: WorldConfig, intent: PhraseIntent): CompileResult | null {
     const capture = mark.performance;
@@ -1479,19 +1510,21 @@ function capturedPerformancePhrase(mark: CanvasMark, w: WorldConfig, intent: Phr
     const maxBeat = Math.max(.05, playbackBeats - .04), bounds = markBounds(mark), spanX = Math.max(.01, bounds.maxX - bounds.minX), out: NoteEvent[] = [];
     for (const captured of source) {
         const pathPhase = clamp(captured.pointIndex / maxPoint), gesturePhase = clamp(captured.gestureTime / maxGesture);
-        const xPhase = clamp(((captured.canvasX ?? pointAt(mark, pathPhase).x) - bounds.minX) / spanX);
+        const pathPoint = pointAt(mark, pathPhase);
+        const point = { x: captured.canvasX ?? pathPoint.x, y: captured.canvasY ?? pathPoint.y };
+        const xPhase = clamp((point.x - bounds.minX) / spanX);
         const phase = clamp(pathPhase * .74 + gesturePhase * .16 + xPhase * .10);
         const rawBeat = phase * maxBeat, snapped = Math.round(rawBeat / grid) * grid, slot = Math.round(snapped / grid);
         const swingOffset = (slot & 1) ? swing * grid : 0;
         const beatPos = clamp(rawBeat + (snapped - rawBeat) * snap + swingOffset, 0, maxBeat);
         const pulseIndex = Math.floor(Math.max(0, beatPos) / Math.max(.125, pulseStep)) % Math.max(1, pulse.length), pulseGain = pulse[pulseIndex] ?? 1;
-        const pt = { x: captured.canvasX ?? pointAt(mark, pathPhase).x, y: captured.canvasY ?? pointAt(mark, pathPhase).y };
         out.push({
             ...captured,
             timeOffset: Math.max(0, beatPos * beat + captured.timeOffset),
             duration: Math.max(.05, Math.min(w.id === 'dreamland' ? beat * 4.8 : beat * 2.9, captured.duration * durationScale * sustain)),
             velocity: clamp(captured.velocity * pulseGain, .05, .9),
-            canvasX: pt.x, canvasY: pt.y,
+            canvasX: point.x,
+            canvasY: point.y,
         });
     }
     out.sort((a, b) => a.timeOffset - b.timeOffset);

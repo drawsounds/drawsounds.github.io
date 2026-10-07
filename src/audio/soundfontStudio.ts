@@ -1,7 +1,8 @@
 import { WorkletSynthesizer } from 'spessasynth_lib';
 import { cyclicAt } from '../utils/arrays';
 import { isWorldId, WORLD_MAP } from '../music/worlds/config';
-import { bankOffset, fetchRuntimeBank, soundSpec } from './sounds';
+import { bankOffset, fetchRuntimeBank, noteVelocity, PITCH_RANGES, soundSpec } from './sounds';
+import type { RuntimeBank, SoundId } from './sounds';
 import type { NoteEvent, PerformerRole, StudioState } from './types';
 function resolveAssetUrl(relativePath: string): string {
     const clean = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
@@ -61,6 +62,9 @@ export class SoundFontStudio {
     private panR: StereoPannerNode;
     private synth: WorkletSynthesizer | null = null;
     private initialization: Promise<void> | null = null;
+    private readonly loadedBanks = new Set<RuntimeBank>();
+    private readonly bankJobs = new Map<RuntimeBank, Promise<void>>();
+    private bankQueue: Promise<void> = Promise.resolve();
     private readonly readyListeners = new Set<() => void>();
     private generation = 0;
     private readonly channelSetup = new Map<number, number>();
@@ -95,19 +99,24 @@ export class SoundFontStudio {
         void this.ready().catch((error: unknown) => console.warn('DrawSounds audio initialization failed', error));
     }
     private async initialize(): Promise<void> {
-        const banks = Promise.all([
-            fetchRuntimeBank('instruments'),
-            fetchRuntimeBank('percussion'),
-        ]);
         await this.ctx.audioWorklet.addModule(resolveAssetUrl('spessasynth_processor.min.js'));
         const synth = new WorkletSynthesizer(this.ctx, { eventsEnabled: false });
-        await synth.isReady;
-        synth.setLogLevel(false, true, false);
-        synth.connect(this.synthBus);
-        const [instruments, percussion] = await banks;
-        await synth.soundBankManager.addSoundBank(instruments, 'instruments', bankOffset('instruments'));
-        await synth.soundBankManager.addSoundBank(percussion, 'percussion', bankOffset('percussion'));
-        this.synth = synth;
+        try {
+            await synth.isReady;
+            synth.setLogLevel(false, true, false);
+            // Bound real-time allocations on both mobile and desktop. This
+            // covers six performers, stereo layers and overlapping releases.
+            synth.setSystemParameter('voiceCap', 128);
+            synth.setSystemParameter('autoAllocateVoices', false);
+            synth.connect(this.synthBus);
+            this.synth = synth;
+        }
+        catch (error: unknown) {
+            synth.destroy();
+            throw error;
+        }
+    }
+    private notifyReady(): void {
         for (const listener of this.readyListeners) {
             try {
                 listener();
@@ -118,20 +127,21 @@ export class SoundFontStudio {
         }
     }
     isReady(): boolean {
-        return this.synth !== null;
+        return this.synth !== null && this.requiredBanks().every(bank => this.loadedBanks.has(bank));
     }
     onReady(listener: () => void): () => void {
-        if (this.synth) {
-            listener();
-            return () => { };
-        }
         this.readyListeners.add(listener);
+        if (this.isReady()) {
+            listener();
+        }
         return () => {
             this.readyListeners.delete(listener);
         };
     }
-    async ensureReady(): Promise<void> {
+    async ensureReady(sound?: SoundId): Promise<void> {
         await this.ready();
+        if (sound)
+            await this.loadBank(soundSpec(sound).bank);
         if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') {
             try {
                 await this.ctx.resume();
@@ -141,14 +151,43 @@ export class SoundFontStudio {
             }
         }
     }
-    ready(): Promise<void> {
+    private requiredBanks(): RuntimeBank[] {
+        const world = this.studioState && isWorldId(this.studioState.worldId)
+            ? WORLD_MAP[this.studioState.worldId] : WORLD_MAP.dreamland;
+        return [...new Set(world.palette.map(performer => soundSpec(performer.sound).bank))];
+    }
+    private loadBank(bank: RuntimeBank): Promise<void> {
+        if (this.loadedBanks.has(bank))
+            return Promise.resolve();
+        let job = this.bankJobs.get(bank);
+        if (!job) {
+            job = this.bankQueue.then(async () => {
+                const data = await fetchRuntimeBank(bank);
+                if (!this.synth)
+                    throw new Error('SoundFont synthesizer unavailable');
+                await this.synth.soundBankManager.addSoundBank(data, bank, bankOffset(bank));
+                this.loadedBanks.add(bank);
+                this.notifyReady();
+            }).finally(() => this.bankJobs.delete(bank));
+            this.bankJobs.set(bank, job);
+            this.bankQueue = job.catch(() => { });
+        }
+        return job;
+    }
+    async ready(): Promise<void> {
         if (!this.initialization) {
             this.initialization = this.initialize().catch((error: unknown) => {
                 this.initialization = null;
                 throw error;
             });
         }
-        return this.initialization;
+        await this.initialization;
+        // Load one bank at a time: the worklet bank manager uses a single
+        // response queue, and sequential parsing limits peak mobile memory.
+        while (!this.isReady()) {
+            for (const bank of this.requiredBanks())
+                await this.loadBank(bank);
+        }
     }
     async unlockFromGesture(): Promise<void> {
         if (this.ctx.state === 'closed')
@@ -273,6 +312,7 @@ export class SoundFontStudio {
         if (key === this.studioKey)
             return;
         this.studioKey = key;
+        void this.ready().catch((error: unknown) => console.warn('DrawSounds world audio unavailable', error));
         const world = isWorldId(state.worldId) ? WORLD_MAP[state.worldId] : WORLD_MAP.dreamland;
         const studio = world.studio;
         const beat = 60 / Math.max(50, state.tempo);
@@ -345,14 +385,9 @@ export class SoundFontStudio {
         const duration = spec.bank === 'percussion'
             ? Math.max(0.42, event.duration * 2.5)
             : Math.max(0.045, event.duration * world.studio.release * articulationScale);
-        const isCappedPercussion = event.sound === 'rock_kit' || event.sound === 'world_percussion';
-        const maxVelocity = isCappedPercussion ? 72 : spec.bank === 'percussion' ? 90 : 104;
-        const minVelocity = isCappedPercussion ? 16 : 12;
-        const velocity = Math.max(
-            minVelocity,
-            Math.min(maxVelocity, Math.round(minVelocity + event.velocity * (maxVelocity - minVelocity)))
-        );
-        const note = Math.max(0, Math.min(127, Math.round(event.midi)));
+        const velocity = noteVelocity(event.sound, event.velocity);
+        const range = event.sound in PITCH_RANGES ? PITCH_RANGES[event.sound as keyof typeof PITCH_RANGES] : [0, 127] as const;
+        const note = Math.max(range[0], Math.min(range[1], Math.round(event.midi)));
         const start = Math.max(requested, this.ctx.currentTime + 0.016);
         const setup = Math.max(this.ctx.currentTime, start - 0.008);
         this.configureChannel(synth, channel, spec.bank, spec.program, setup);
@@ -363,7 +398,7 @@ export class SoundFontStudio {
         };
         const target = event.glideToMidi === undefined
             ? null
-            : Math.max(0, Math.min(127, Math.round(event.glideToMidi)));
+            : Math.max(range[0], Math.min(range[1], Math.round(event.glideToMidi)));
         if (target !== null && target !== note && spec.bank !== 'percussion') {
             const steps = Math.min(4, Math.max(2, Math.abs(target - note) + 1));
             const span = Math.min(duration * 0.5, 0.34);
@@ -371,7 +406,7 @@ export class SoundFontStudio {
                 const midi = Math.round(note + ((target - note) * index) / (steps - 1));
                 const on = start + (span * index) / (steps - 1);
                 const off = Math.min(start + duration, on + Math.max(0.08, (span / (steps - 1)) * 1.5));
-                play(midi, Math.round(velocity * (1 - index * 0.04)), on, off);
+                play(midi, noteVelocity(event.sound, event.velocity * (1 - index * 0.04)), on, off);
             }
         }
         else {
@@ -388,14 +423,16 @@ export class SoundFontStudio {
             this.playReady(event, start, bus, this.generation);
         };
 
-        if (this.synth && this.ctx.state === 'running') {
+        if (this.synth && this.loadedBanks.has(soundSpec(event.sound).bank) && this.ctx.state === 'running') {
             schedule();
             return;
         }
 
-        void this.ensureReady()
+        const generation = this.generation;
+        void this.ensureReady(event.sound)
             .then(() => {
-                schedule();
+                if (generation === this.generation)
+                    schedule();
             })
             .catch((error: unknown) => console.warn('DrawSounds note failed', error));
     }

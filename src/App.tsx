@@ -12,7 +12,15 @@ function withoutGeneratedState(mark: CanvasMark, points: CanvasPoint[], id = mar
     delete copy.performance;
     return copy;
 }
-function initialTransport(): TransportState { return { isPlaying: false, isPreparing: false, currentTime: 0, totalDuration: 0, isReady: transport.isReady() }; }
+function initialTransport(): TransportState {
+    return {
+        isPlaying: false,
+        isPreparing: false,
+        currentTime: 0,
+        totalDuration: 0,
+        isReady: transport.isReady(),
+    };
+}
 const TOOLS: {
     id: CanvasTool;
     label: string;
@@ -81,7 +89,13 @@ type CanvasFx = {
     seed: number;
     stampKind?: StampKind;
 };
-function seeded(seed: number) { let s = seed || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function seeded(seed: number): () => number {
+    let state = seed || 1;
+    return () => {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        return state / 4294967296;
+    };
+}
 function pathFrom(points: CanvasPoint[], dx = 0, dy = 0) {
     if (!points.length)
         return '';
@@ -416,9 +430,8 @@ export default function App() {
     const song = useMemo(() => interpretCanvas(marks, worldId), [marks, worldId]);
     useEffect(() => { transport.setSong(song); }, [song]);
     useEffect(() => transport.subscribe(next => {
-        // Keep the 20Hz transport clock out of React's root render. Moving the
-        // playhead and native range value imperatively is enough for time-only
-        // ticks; React only receives meaningful/discrete transport changes.
+        // Update the playhead and scrubber directly on transport ticks; render
+        // React state only when transport flags or paused time change.
         const progress = next.totalDuration ? Math.max(0, Math.min(1, next.currentTime / next.totalDuration)) : 0;
         if (playheadRef.current) {
             playheadRef.current.style.left = `${progress * 100}%`;
@@ -473,7 +486,13 @@ export default function App() {
             window.removeEventListener('keydown', unlock);
         };
     }, []);
-    const pointFromEvent = (e: ReactPointerEvent<SVGSVGElement>): CanvasPoint => { const r = canvasRect.current ?? e.currentTarget.getBoundingClientRect(); return { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) }; };
+    const pointFromEvent = (event: ReactPointerEvent<SVGSVGElement>): CanvasPoint => {
+        const rect = canvasRect.current ?? event.currentTarget.getBoundingClientRect();
+        return {
+            x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+            y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+        };
+    };
     const addEffect = useCallback((mark: CanvasMark, kind: CanvasFx['kind']) => {
         const point = mark.points.length ? lastOrThrow(mark.points, 'effect mark points') : { x: .5, y: .5 };
         const sound = cyclicAt(WORLD_MAP[worldId].palette, mark.paletteIndex, `${worldId} palette`);
@@ -513,8 +532,13 @@ export default function App() {
             mark.performance = capture;
         }
     }, [worldId]);
-    const commit = useCallback((mark: CanvasMark, kind: CanvasFx['kind'], preview = true) => { const frozen = freezeMark(mark); setMarks(prev => [...prev, frozen]); if (preview)
-        audition(frozen, false); addEffect(frozen, kind); }, [addEffect, audition, worldId]);
+    const commit = useCallback((mark: CanvasMark, kind: CanvasFx['kind'], preview = true) => {
+        const frozen = freezeMark(mark);
+        setMarks(prev => [...prev, frozen]);
+        if (preview)
+            audition(frozen, false);
+        addEffect(frozen, kind);
+    }, [addEffect, audition]);
     const auditionStamp = useCallback((kind: StampKind) => {
         const mark: CanvasMark = {
             id: `preview_stamp_${Date.now()}`,
@@ -554,7 +578,11 @@ export default function App() {
         }
         if (draftFrame.current !== null)
             return;
-        draftFrame.current = requestAnimationFrame(() => { draftFrame.current = null; const value = draftRef.current; setDraft(value ? { ...value, points: [...value.points] } : null); });
+        draftFrame.current = requestAnimationFrame(() => {
+            draftFrame.current = null;
+            const value = draftRef.current;
+            setDraft(value ? { ...value, points: [...value.points] } : null);
+        });
     }, []);
     const publishHover = useCallback((point: CanvasPoint | null, immediate = false) => {
         hoverRef.current = point;
@@ -568,7 +596,10 @@ export default function App() {
         }
         if (hoverFrame.current !== null)
             return;
-        hoverFrame.current = requestAnimationFrame(() => { hoverFrame.current = null; setHoverPoint(hoverRef.current); });
+        hoverFrame.current = requestAnimationFrame(() => {
+            hoverFrame.current = null;
+            setHoverPoint(hoverRef.current);
+        });
     }, []);
     const flushErase = useCallback(() => {
         if (eraseFrame.current !== null) {
@@ -584,12 +615,15 @@ export default function App() {
                 next = next.map(mark => eraseMarkAt(mark, p, .050)).filter((mark): mark is CanvasMark => Boolean(mark));
             return next;
         });
-    }, [worldId]);
+    }, []);
     const eraseAt = useCallback((p: CanvasPoint) => {
         eraseQueue.current.push(p);
         if (eraseFrame.current !== null)
             return;
-        eraseFrame.current = requestAnimationFrame(() => { eraseFrame.current = null; flushErase(); });
+        eraseFrame.current = requestAnimationFrame(() => {
+            eraseFrame.current = null;
+            flushErase();
+        });
     }, [flushErase]);
     const cancelBomb = useCallback(() => {
         if (bombTimer.current !== null) {

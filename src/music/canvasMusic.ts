@@ -1,4 +1,5 @@
 import type { NoteEvent, Phrase, Song } from '../audio/types';
+import { fitSoundRegister, soundSpec } from '../audio/sounds';
 import { atOrThrow, cyclicAt } from '../utils/arrays';
 import type { CanvasMark, CanvasPoint, WorldConfig, WorldId, } from './canvasTypes';
 import type { PhraseMotif } from './phraseEngine';
@@ -111,7 +112,11 @@ function relationshipEvents(relation: {
             const interval = cyclicAt(profile.intervals, index, 'relationship intervals');
             output.push({
                 ...event,
-                midi: Math.max(0, Math.min(127, Math.round(targetEvent.midi + interval))),
+                // Kit keys identify articulations, not scale degrees. Preserve
+                // the source hit when interacting with another instrument.
+                midi: soundSpec(event.sound).bank === 'percussion'
+                    ? event.midi
+                    : fitSoundRegister(event.sound, targetEvent.midi + interval),
                 timeOffset: Math.max(0, target.startTime +
                     targetEvent.timeOffset -
                     source.startTime +
@@ -133,7 +138,9 @@ function relationshipEvents(relation: {
                 (mode === 'clave' && index % 2 !== 0 ? 0.18 : mode === 'odd' ? index * 0.11 : 0));
         output.push({
             ...event,
-            midi: Math.max(0, Math.min(127, event.midi + shift)),
+            midi: soundSpec(event.sound).bank === 'percussion'
+                ? event.midi
+                : fitSoundRegister(event.sound, event.midi + shift),
             timeOffset: Math.max(0, target.startTime + targetEvent.timeOffset + targetEvent.duration - source.startTime + delay),
             duration: event.duration * profile.dur,
             velocity: event.velocity * profile.respond,

@@ -1,0 +1,126 @@
+{
+  "seedCommit": "949fbdf38c879183d6821fa52000b8d4fea27abb",
+  "samples": [
+    {
+      "id": "djembe-bass",
+      "file": "djembe-bass.mp3",
+      "url": "https://cdn.freesound.org/previews/158/158960_2394766-hq.mp3",
+      "source": "https://freesound.org/people/carlmartin/sounds/158960/",
+      "author": "carlmartin",
+      "license": "CC0-1.0",
+      "sha256": "4783171691d540fbc3d0c4daa56a36333d63476b3d405fde94f18ae2dc6814b6"
+    },
+    {
+      "id": "djembe-muted",
+      "file": "djembe-muted.mp3",
+      "url": "https://cdn.freesound.org/previews/158/158961_2394766-hq.mp3",
+      "source": "https://freesound.org/people/carlmartin/sounds/158961/",
+      "author": "carlmartin",
+      "license": "CC0-1.0",
+      "sha256": "c7b09614369421878f5c7168f3bc6cc58b5963c2ac96277a30e822d0e5258eef"
+    },
+    {
+      "id": "djembe-tone",
+      "file": "djembe-tone.mp3",
+      "url": "https://cdn.freesound.org/previews/158/158968_2394766-hq.mp3",
+      "source": "https://freesound.org/people/carlmartin/sounds/158968/",
+      "author": "carlmartin",
+      "license": "CC0-1.0",
+      "sha256": "ff08889575911156e65bfcaf8ebaa7919138cf15288f743fce3c41de9ea95cfe"
+    },
+    {
+      "id": "djembe-slap",
+      "file": "djembe-slap.mp3",
+      "url": "https://cdn.freesound.org/previews/158/158969_2394766-hq.mp3",
+      "source": "https://freesound.org/people/carlmartin/sounds/158969/",
+      "author": "carlmartin",
+      "license": "CC0-1.0",
+      "sha256": "1314e148d44789f75482bce507fefe36db0f9f11c013fe41a9c1a7ce21914ba5"
+    },
+    {
+      "id": "shekere",
+      "file": "shekere.mp3",
+      "url": "https://cdn.freesound.org/previews/506/506383_2771755-hq.mp3",
+      "source": "https://freesound.org/people/Sassaby/sounds/506383/",
+      "author": "Sassaby",
+      "license": "CC0-1.0",
+      "sha256": "9bcb73f96e534d13e0f504b828211724314933f3bebf9b805d7fc63ace1269aa"
+    },
+    {
+      "id": "timbales",
+      "file": "timbales.mp3",
+      "url": "https://cdn.freesound.org/previews/41/41196_199517-hq.mp3",
+      "source": "https://freesound.org/people/hello_flowers/sounds/41196/",
+      "author": "hello_flowers",
+      "license": "CC0-1.0",
+      "sha256": "7f32bc244ce40f0af61dc2d3042816a3fdb9af57c823360ff1ac1d7e4eb17187"
+    },
+    {
+      "id": "glass-1",
+      "file": "glass-1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Friction%20Idiophones/Wine%20Glasses/Sustains/Slow/glass1_D%234_Slow_1_Main.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "6cdc2f602fac912a768561b3831ebb9099c884cb5ea76c88befedf545bab1997"
+    },
+    {
+      "id": "glass-2",
+      "file": "glass-2.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Friction%20Idiophones/Wine%20Glasses/Sustains/Slow/glass2_F%234_Slow_1_Main.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "a6dea146ee3b11fb1d667742ac4a3c16f0bdb567103ef5602cdf3df163b52080"
+    },
+    {
+      "id": "glass-3",
+      "file": "glass-3.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Friction%20Idiophones/Wine%20Glasses/Sustains/Slow/glass3_A%234_Slow_1_Main.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "b35da8d5c9ea4e24b33508094e3cb3e736e7ff5ea4517335844023f82c9bb503"
+    },
+    {
+      "id": "glass-4",
+      "file": "glass-4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Friction%20Idiophones/Wine%20Glasses/Sustains/Slow/glass4_D5_Slow_2_Main.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "ffb776b67e6d43f6eeb8ff2b73d9a45e233919a83d4cb104c5dad2807f681322"
+    },
+    {
+      "id": "cowbell-2",
+      "file": "cowbell-2.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cowbells/Cowbell1_Hit_v2_rr1_Mid.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "6820d8f2abebe1d3e4dba262ad628d833ab04ade72dd2711b0cf4d2a58fa780d"
+    },
+    {
+      "id": "cowbell-3",
+      "file": "cowbell-3.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cowbells/Cowbell1_Hit_v3_rr1_Mid.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "36e9243e18b299bde0ebbb108c65846ddb5d46b35a61655fa18a0327e3390e87"
+    },
+    {
+      "id": "cowbell-4",
+      "file": "cowbell-4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cowbells/Cowbell1_Hit_v4_rr1_Mid.wav",
+      "source": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios LLC",
+      "license": "CC0-1.0",
+      "sha256": "e32a7a646bddfbc63595de9f64e3e435999c932ebadf0fe98759e754096002a0"
+    }
+  ],
+  "seedHashes": {
+    "instruments": "d0a1c7a8c4648f228df21c667ac7cff6ba49388961538f0543e317f02c5e7dc6",
+    "percussion": "35bff7888dfa6c202374121b174431b62b7ad27fbffb89d1d217b0596e8971dd"
+  }
+}
