@@ -19,13 +19,33 @@ class Transport {
     private readonly lookAhead = 0.24;
     private scheduledTo = 0;
     private playRequest = 0;
-    unlockAudio(): void {
-        if (this.studio.ctx.state !== 'running') {
-            void this.studio.ctx.resume().catch(() => { });
+    constructor() {
+        this.studio.onReady(() => {
+            this.emit();
+        });
+    }
+    async unlockAudio(): Promise<void> {
+        if (this.studio.ctx.state !== 'running' && this.studio.ctx.state !== 'closed') {
+            try {
+                await this.studio.ctx.resume();
+            }
+            catch (error: unknown) {
+                console.warn('DrawSounds audio resume failed', error);
+            }
         }
-        void this.studio
-            .unlockFromGesture()
-            .catch((error: unknown) => console.warn('DrawSounds audio resume failed', error));
+        try {
+            await this.studio.unlockFromGesture();
+        }
+        catch (error: unknown) {
+            console.warn('DrawSounds audio resume failed', error);
+        }
+        this.emit();
+    }
+    isReady(): boolean {
+        return this.studio.isReady();
+    }
+    ready(): Promise<void> {
+        return this.studio.ready();
     }
     private rebuildTimeline(song: Song): void {
         const timeline: TimelineEvent[] = [];
@@ -203,7 +223,7 @@ class Transport {
             timeOffset: Math.max(0, event.timeOffset - firstTime),
             duration: live ? Math.min(1.25, event.duration) : event.duration,
         }));
-        const start = this.studio.ctx.currentTime + 0.008;
+        const start = this.studio.ctx.currentTime + 0.024;
         for (const event of played) {
             this.studio.playNote(event, start + event.timeOffset, 'audition');
         }
@@ -251,6 +271,7 @@ class Transport {
             isPreparing: this.preparing,
             currentTime: this.currentTime(),
             totalDuration: this.song?.totalDuration ?? 0,
+            isReady: this.studio.isReady(),
         };
     }
     private emit(): void {

@@ -37,4 +37,5 @@ export interface TransportState {
     isPreparing: boolean;
     currentTime: number;
     totalDuration: number;
+    isReady: boolean;
 }

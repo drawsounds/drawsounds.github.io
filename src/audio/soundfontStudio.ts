@@ -61,6 +61,7 @@ export class SoundFontStudio {
     private panR: StereoPannerNode;
     private synth: WorkletSynthesizer | null = null;
     private initialization: Promise<void> | null = null;
+    private readonly readyListeners = new Set<() => void>();
     private generation = 0;
     private readonly channelSetup = new Map<number, number>();
     private readonly channelMix = new Map<number, ChannelMix>();
@@ -107,6 +108,38 @@ export class SoundFontStudio {
         await synth.soundBankManager.addSoundBank(instruments, 'instruments', bankOffset('instruments'));
         await synth.soundBankManager.addSoundBank(percussion, 'percussion', bankOffset('percussion'));
         this.synth = synth;
+        for (const listener of this.readyListeners) {
+            try {
+                listener();
+            }
+            catch (error: unknown) {
+                console.warn('DrawSounds ready listener failed', error);
+            }
+        }
+    }
+    isReady(): boolean {
+        return this.synth !== null;
+    }
+    onReady(listener: () => void): () => void {
+        if (this.synth) {
+            listener();
+            return () => { };
+        }
+        this.readyListeners.add(listener);
+        return () => {
+            this.readyListeners.delete(listener);
+        };
+    }
+    async ensureReady(): Promise<void> {
+        await this.ready();
+        if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') {
+            try {
+                await this.ctx.resume();
+            }
+            catch (error: unknown) {
+                console.warn('DrawSounds audio resume failed', error);
+            }
+        }
     }
     ready(): Promise<void> {
         if (!this.initialization) {
@@ -309,12 +342,19 @@ export class SoundFontStudio {
             ? WORLD_MAP[this.studioState.worldId]
             : WORLD_MAP.dreamland;
         const articulationScale = event.articulation === 'staccato' ? 0.62 : event.articulation === 'legato' ? 1.1 : 1;
-        const duration = Math.max(0.045, event.duration * world.studio.release * articulationScale);
-        const maxVelocity = spec.bank === 'percussion' ? 92 : 104;
-        const velocity = Math.max(12, Math.min(maxVelocity, Math.round(10 + event.velocity * 132)));
+        const duration = spec.bank === 'percussion'
+            ? Math.max(0.42, event.duration * 2.5)
+            : Math.max(0.045, event.duration * world.studio.release * articulationScale);
+        const isCappedPercussion = event.sound === 'rock_kit' || event.sound === 'world_percussion';
+        const maxVelocity = isCappedPercussion ? 72 : spec.bank === 'percussion' ? 90 : 104;
+        const minVelocity = isCappedPercussion ? 16 : 12;
+        const velocity = Math.max(
+            minVelocity,
+            Math.min(maxVelocity, Math.round(minVelocity + event.velocity * (maxVelocity - minVelocity)))
+        );
         const note = Math.max(0, Math.min(127, Math.round(event.midi)));
-        const start = Math.max(requested, this.ctx.currentTime + 0.006);
-        const setup = Math.max(this.ctx.currentTime, start - 0.004);
+        const start = Math.max(requested, this.ctx.currentTime + 0.016);
+        const setup = Math.max(this.ctx.currentTime, start - 0.008);
         this.configureChannel(synth, channel, spec.bank, spec.program, setup);
         this.configureMix(synth, channel, event, setup);
         const play = (midi: number, noteVelocity: number, on: number, off: number): void => {
@@ -340,15 +380,23 @@ export class SoundFontStudio {
         return true;
     }
     playNote(event: NoteEvent, when: number, bus: PlayBus = 'transport'): void {
-        const requested = Math.max(this.ctx.currentTime + 0.006, when);
-        if (this.playReady(event, requested, bus, this.generation))
+        const schedule = () => {
+            if (!this.synth)
+                return;
+            const now = this.ctx.currentTime;
+            const start = Math.max(now + 0.006, when);
+            this.playReady(event, start, bus, this.generation);
+        };
+
+        if (this.synth && this.ctx.state === 'running') {
+            schedule();
             return;
-        void this.ready()
+        }
+
+        void this.ensureReady()
             .then(() => {
-            if (this.synth) {
-                this.playReady(event, Math.max(requested, this.ctx.currentTime + 0.008), bus, this.generation);
-            }
-        })
+                schedule();
+            })
             .catch((error: unknown) => console.warn('DrawSounds note failed', error));
     }
     panic(clearEffects = false): void {

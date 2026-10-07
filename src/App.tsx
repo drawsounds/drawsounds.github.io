@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ChangeEvent, PointerEvent as ReactPointerEvent } from 'react';
-import { Bomb, Eraser, PaintBucket, Pause, Pencil, Play, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Bomb, Eraser, PaintBucket, Pause, Pencil, Play, RotateCcw, X } from 'lucide-react';
 import { transport } from './audio/engine';
-import type { NoteEvent, TransportState } from './audio/types';
+import type { TransportState } from './audio/types';
 import { WORLD_MAP, WORLDS, createGestureStats, eraseMarkAt, extendGestureStats, freezeMark, interpretCanvas, interpretMark, performFloodFill, randomWorld, } from './music/canvasMusic';
 import type { CanvasMark, CanvasPoint, CanvasTool, Performer, StampKind, WorldId } from './music/canvasTypes';
 import { atOrThrow, cyclicAt, firstOrThrow, lastOrThrow } from './utils/arrays';
@@ -12,19 +12,66 @@ function withoutGeneratedState(mark: CanvasMark, points: CanvasPoint[], id = mar
     delete copy.performance;
     return copy;
 }
-function initialTransport(): TransportState { return { isPlaying: false, isPreparing: false, currentTime: 0, totalDuration: 0 }; }
+function initialTransport(): TransportState { return { isPlaying: false, isPreparing: false, currentTime: 0, totalDuration: 0, isReady: transport.isReady() }; }
 const TOOLS: {
     id: CanvasTool;
     label: string;
+    description: string;
 }[] = [
-    { id: 'crayon', label: 'Crayon' },
-    { id: 'dots', label: 'Dots' },
-    { id: 'spray', label: 'Spray' },
-    { id: 'stamp', label: 'Stamp' },
-    { id: 'boom', label: 'Boom' },
-    { id: 'fill', label: 'Fill' },
-    { id: 'eraser', label: 'Eraser' },
+    { id: 'crayon', label: 'Crayon', description: 'Crayon: draw musical lines' },
+    { id: 'dots', label: 'Dots', description: 'Dots: staccato rhythmic beats' },
+    { id: 'spray', label: 'Spray can', description: 'Spray can: aerosol splatter mist' },
+    { id: 'stamp', label: 'Stamp', description: 'Stamp: rhythmic animal and shape stamps' },
+    { id: 'boom', label: 'Boom', description: 'Boom: explosive crash burst' },
+    { id: 'fill', label: 'Fill', description: 'Fill: wash background harmony' },
+    { id: 'eraser', label: 'Eraser', description: 'Eraser: clear marks' },
 ];
+function DotsIcon({ size = 21 }: { size?: number }) {
+    return (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
+            <circle cx="5" cy="12" r="3" />
+            <circle cx="12" cy="12" r="3.6" />
+            <circle cx="19" cy="12" r="3" />
+        </svg>
+    );
+}
+function SprayCanIcon({ size = 21, strokeWidth = 2.2 }: { size?: number; strokeWidth?: number }) {
+    return (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="4" y="9.5" width="10" height="12.5" rx="2" />
+            <path d="M 5 9.5 C 5 7.8 7 6.8 9 6.8 C 11 6.8 13 7.8 13 9.5" />
+            <rect x="7.5" y="4.2" width="3" height="2.6" rx="0.6" fill="currentColor" />
+            <path d="M 14.5 4.8 L 19.5 2.8" strokeWidth={Math.max(1.5, strokeWidth * 0.8)} />
+            <path d="M 15 7.2 L 20.5 7.2" strokeWidth={Math.max(1.5, strokeWidth * 0.8)} />
+            <path d="M 14.5 9.6 L 19.5 11.6" strokeWidth={Math.max(1.5, strokeWidth * 0.8)} />
+            <circle cx="18" cy="4.8" r="0.8" fill="currentColor" stroke="none" />
+            <circle cx="17.5" cy="9.4" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
+function RubberStampIcon({ size = 21, strokeWidth = 2.2 }: { size?: number; strokeWidth?: number }) {
+    return (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="4.8" r="2.6" />
+            <path d="M 12 7.4 L 12 11.2" />
+            <path d="M 6.8 15.2 L 9.2 11.2 L 14.8 11.2 L 17.2 15.2 Z" fill="currentColor" fillOpacity="0.14" />
+            <rect x="4.5" y="15.2" width="15" height="3.8" rx="1.2" />
+            <path d="M 6 21.5 L 18 21.5" strokeDasharray="3.2 2" strokeWidth={Math.max(1.6, strokeWidth * 0.8)} />
+        </svg>
+    );
+}
+function BoomIcon({ size = 21, strokeWidth = 2.2 }: { size?: number; strokeWidth?: number }) {
+    return (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polygon
+                points="12,2 14.8,7.8 21.2,5.8 17.5,11.8 22,15.8 15.8,16.5 16.2,22 11.5,18 7,21.5 8.2,15.5 2,14.5 7,10.2 3.5,4.8 9.8,6.8"
+                fill="currentColor"
+                fillOpacity="0.18"
+            />
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
 type CanvasFx = {
     id: string;
     x: number;
@@ -53,7 +100,7 @@ function starPoints(cx: number, cy: number, r: number, n = 5) { const pts: strin
     const a = -Math.PI / 2 + i * Math.PI / n, rr = i % 2 === 0 ? r : r * .43;
     pts.push(`${cx + Math.cos(a) * rr},${cy + Math.sin(a) * rr}`);
 } return pts.join(' '); }
-function CuteStamp({ kind, cx, cy, r, color, ink, monochrome = false }: {
+function CuteStamp({ kind, cx, cy, r, color, ink, monochrome = false, withSeal = false }: {
     kind: StampKind;
     cx: number;
     cy: number;
@@ -61,13 +108,21 @@ function CuteStamp({ kind, cx, cy, r, color, ink, monochrome = false }: {
     color: string;
     ink: string;
     monochrome?: boolean;
+    withSeal?: boolean;
 }) {
     const c = monochrome ? 'currentColor' : color;
     const i = monochrome ? 'currentColor' : ink;
     const fillBase = monochrome ? 'none' : color;
     const strokeWidth = monochrome ? Math.max(1.8, r * 0.08) : Math.max(1.8, r * 0.05);
+    const seal = withSeal ? (
+      <g className="stamp-seal" opacity={monochrome ? ".55" : ".38"}>
+        <circle cx={cx} cy={cy} r={r * 1.08} fill="none" stroke={i} strokeWidth={Math.max(1.6, r * .042)} strokeDasharray={`${r * .24} ${r * .08}`}/>
+        <circle cx={cx} cy={cy} r={r * 1.02} fill="none" stroke={i} strokeWidth={Math.max(1, r * .024)} opacity=".6"/>
+      </g>
+    ) : null;
     if (kind === 'cat') {
         return <g>
+      {seal}
       <path d={`M ${cx - r * .62} ${cy - r * .26} L ${cx - r * .58} ${cy - r * .94} L ${cx - r * .16} ${cy - r * .58} Q ${cx} ${cy - r * .68} ${cx + r * .16} ${cy - r * .58} L ${cx + r * .58} ${cy - r * .94} L ${cx + r * .62} ${cy - r * .26} Q ${cx + r * .74} ${cy + r * .66} ${cx} ${cy + r * .72} Q ${cx - r * .74} ${cy + r * .66} ${cx - r * .62} ${cy - r * .26} Z`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>
       <polygon points={`${cx - r * .46},${cy - r * .36} ${cx - r * .46},${cy - r * .76} ${cx - r * .22},${cy - r * .52}`} fill={i} opacity=".25"/>
       <polygon points={`${cx + r * .46},${cy - r * .36} ${cx + r * .46},${cy - r * .76} ${cx + r * .22},${cy - r * .52}`} fill={i} opacity=".25"/>
@@ -87,6 +142,7 @@ function CuteStamp({ kind, cx, cy, r, color, ink, monochrome = false }: {
     }
     if (kind === 'frog') {
         return <g>
+      {seal}
       <circle cx={cx - r * .40} cy={cy - r * .28} r={r * .30} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>
       <circle cx={cx + r * .40} cy={cy - r * .28} r={r * .30} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>
       <ellipse cx={cx} cy={cy + r * .18} rx={r * .75} ry={r * .54} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>
@@ -102,28 +158,36 @@ function CuteStamp({ kind, cx, cy, r, color, ink, monochrome = false }: {
     </g>;
     }
     if (kind === 'panda') {
+        const earR = r * .36;
+        const earInnerR = r * .18;
+        const earX = r * .54;
+        const earY = r * .62;
+        const earStroke = monochrome ? i : (fillBase !== 'none' ? fillBase : 'var(--canvas,#fff)');
         return <g>
-      <circle cx={cx - r * .48} cy={cy - r * .52} r={r * .25} fill={i}/>
-      <circle cx={cx + r * .48} cy={cy - r * .52} r={r * .25} fill={i}/>
+      {seal}
+      <circle cx={cx - earX} cy={cy - earY} r={earR} fill={i} stroke={earStroke} strokeWidth={Math.max(2.4, r * 0.08)}/>
+      <circle cx={cx + earX} cy={cy - earY} r={earR} fill={i} stroke={earStroke} strokeWidth={Math.max(2.4, r * 0.08)}/>
+      <circle cx={cx - earX} cy={cy - earY} r={earInnerR} fill={monochrome ? 'var(--canvas,#fff)' : c} opacity={monochrome ? .4 : .88}/>
+      <circle cx={cx + earX} cy={cy - earY} r={earInnerR} fill={monochrome ? 'var(--canvas,#fff)' : c} opacity={monochrome ? .4 : .88}/>
       <ellipse cx={cx} cy={cy} rx={r * .72} ry={r * .70} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>
-      <ellipse cx={cx - r * .28} cy={cy - r * .12} rx={r * .20} ry={r * .27} transform={`rotate(24 ${cx - r * .28} ${cy - r * .12})`} fill={i} opacity=".82"/>
-      <ellipse cx={cx + r * .28} cy={cy - r * .12} rx={r * .20} ry={r * .27} transform={`rotate(-24 ${cx + r * .28} ${cy - r * .12})`} fill={i} opacity=".82"/>
-      <circle cx={cx - r * .25} cy={cy - r * .12} r={r * .055} fill={monochrome ? 'var(--canvas,#fff)' : c}/>
-      <circle cx={cx + r * .25} cy={cy - r * .12} r={r * .055} fill={monochrome ? 'var(--canvas,#fff)' : c}/>
-      <ellipse cx={cx} cy={cy + r * .14} rx={r * .12} ry={r * .09} fill={i}/>
-      <path d={`M ${cx - r * .13} ${cy + r * .27} Q ${cx} ${cy + r * .38} ${cx + r * .13} ${cy + r * .27}`} fill="none" stroke={i} strokeWidth={Math.max(2, r * .055)} strokeLinecap="round"/>
-      <circle cx={cx - r * .43} cy={cy + r * .26} r={r * .10} fill={i} opacity=".14"/>
-      <circle cx={cx + r * .43} cy={cy + r * .26} r={r * .10} fill={i} opacity=".14"/>
+      <ellipse cx={cx - r * .28} cy={cy - r * .12} rx={r * .20} ry={r * .27} transform={`rotate(24 ${cx - r * .28} ${cy - r * .12})`} fill={i} opacity=".85"/>
+      <ellipse cx={cx + r * .28} cy={cy - r * .12} rx={r * .20} ry={r * .27} transform={`rotate(-24 ${cx + r * .28} ${cy - r * .12})`} fill={i} opacity=".85"/>
+      <circle cx={cx - r * .25} cy={cy - r * .12} r={r * .06} fill={monochrome ? 'var(--canvas,#fff)' : c}/>
+      <circle cx={cx + r * .25} cy={cy - r * .12} r={r * .06} fill={monochrome ? 'var(--canvas,#fff)' : c}/>
+      <ellipse cx={cx} cy={cy + r * .14} rx={r * .13} ry={r * .095} fill={i}/>
+      <path d={`M ${cx - r * .13} ${cy + r * .27} Q ${cx} ${cy + r * .38} ${cx + r * .13} ${cy + r * .27}`} fill="none" stroke={i} strokeWidth={Math.max(2.2, r * .06)} strokeLinecap="round"/>
+      <circle cx={cx - r * .43} cy={cy + r * .26} r={r * .10} fill={i} opacity=".18"/>
+      <circle cx={cx + r * .43} cy={cy + r * .26} r={r * .10} fill={i} opacity=".18"/>
     </g>;
     }
     if (kind === 'star')
-        return <g><polygon points={starPoints(cx, cy, r, 5)} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/><circle cx={cx - r * .22} cy={cy - r * .05} r={r * .07} fill={i}/><circle cx={cx + r * .22} cy={cy - r * .05} r={r * .07} fill={i}/><path d={`M ${cx - r * .2} ${cy + r * .18} Q ${cx} ${cy + r * .35} ${cx + r * .2} ${cy + r * .18}`} fill="none" stroke={i} strokeWidth={Math.max(2, r * .06)} strokeLinecap="round"/></g>;
+        return <g>{seal}<polygon points={starPoints(cx, cy, r, 5)} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/><circle cx={cx - r * .22} cy={cy - r * .05} r={r * .07} fill={i}/><circle cx={cx + r * .22} cy={cy - r * .05} r={r * .07} fill={i}/><path d={`M ${cx - r * .2} ${cy + r * .18} Q ${cx} ${cy + r * .35} ${cx + r * .2} ${cy + r * .18}`} fill="none" stroke={i} strokeWidth={Math.max(2, r * .06)} strokeLinecap="round"/></g>;
     if (kind === 'rocket')
-        return <g transform={`translate(${cx} ${cy}) rotate(12)`}><path d={`M 0 ${-r} Q ${r * .58} ${-r * .18} ${r * .35} ${r * .62} L 0 ${r * .42} L ${-r * .35} ${r * .62} Q ${-r * .58} ${-r * .18} 0 ${-r}`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/><circle cy={-r * .2} r={r * .2} fill={monochrome ? 'none' : i} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth} opacity={monochrome ? 1 : .18}/><path d={`M ${-r * .2} ${r * .48} L 0 ${r * 1.06} L ${r * .2} ${r * .48}`} stroke={i} strokeWidth={monochrome ? strokeWidth : 1} fill={i} opacity={monochrome ? 1 : .45}/></g>;
+        return <g transform={`translate(${cx} ${cy}) rotate(12)`}>{seal}<path d={`M 0 ${-r} Q ${r * .58} ${-r * .18} ${r * .35} ${r * .62} L 0 ${r * .42} L ${-r * .35} ${r * .62} Q ${-r * .58} ${-r * .18} 0 ${-r}`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/><circle cy={-r * .2} r={r * .2} fill={monochrome ? 'none' : i} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth} opacity={monochrome ? 1 : .18}/><path d={`M ${-r * .2} ${r * .48} L 0 ${r * 1.06} L ${r * .2} ${r * .48}`} stroke={i} strokeWidth={monochrome ? strokeWidth : 1} fill={i} opacity={monochrome ? 1 : .45}/></g>;
     if (kind === 'flower')
-        return <g>{Array.from({ length: 7 }, (_, idx) => { const a = idx * Math.PI * 2 / 7; return <ellipse key={idx} cx={cx + Math.cos(a) * r * .45} cy={cy + Math.sin(a) * r * .45} rx={r * .28} ry={r * .42} transform={`rotate(${a * 180 / Math.PI + 90} ${cx + Math.cos(a) * r * .45} ${cy + Math.sin(a) * r * .45})`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>; })}<circle cx={cx} cy={cy} r={r * .3} fill={i} opacity=".25"/><circle cx={cx} cy={cy} r={r * .14} fill={monochrome ? 'var(--canvas,#fff)' : c}/></g>;
+        return <g>{seal}{Array.from({ length: 7 }, (_, idx) => { const a = idx * Math.PI * 2 / 7; return <ellipse key={idx} cx={cx + Math.cos(a) * r * .45} cy={cy + Math.sin(a) * r * .45} rx={r * .28} ry={r * .42} transform={`rotate(${a * 180 / Math.PI + 90} ${cx + Math.cos(a) * r * .45} ${cy + Math.sin(a) * r * .45})`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/>; })}<circle cx={cx} cy={cy} r={r * .3} fill={i} opacity=".25"/><circle cx={cx} cy={cy} r={r * .14} fill={monochrome ? 'var(--canvas,#fff)' : c}/></g>;
     if (kind === 'lightning')
-        return <g transform={`translate(${cx} ${cy}) rotate(8)`}><path d={`M ${r * .12} ${-r} L ${-r * .56} ${r * .03} L ${-r * .08} ${r * .03} L ${-r * .32} ${r} L ${r * .62} ${-r * .18} L ${r * .1} ${-r * .18} Z`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/><path d={`M ${r * .05} ${-r * .75} L ${-r * .28} ${-r * .06}`} stroke={i} strokeWidth={Math.max(2, r * .06)} opacity=".28"/></g>;
+        return <g transform={`translate(${cx} ${cy}) rotate(8)`}>{seal}<path d={`M ${r * .12} ${-r} L ${-r * .56} ${r * .03} L ${-r * .08} ${r * .03} L ${-r * .32} ${r} L ${r * .62} ${-r * .18} L ${r * .1} ${-r * .18} Z`} fill={fillBase} stroke={monochrome ? i : 'none'} strokeWidth={strokeWidth}/><path d={`M ${r * .05} ${-r * .75} L ${-r * .28} ${-r * .06}`} stroke={i} strokeWidth={Math.max(2, r * .06)} opacity=".28"/></g>;
     return null;
 }
 function StampToolbarIcon({ kind, size = 21 }: {
@@ -152,14 +216,14 @@ function StampToolbarIcon({ kind, size = 21 }: {
     }
     if (kind === 'panda') {
         return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="5" cy="6" r="2.5"/>
-      <circle cx="19" cy="6" r="2.5"/>
-      <circle cx="12" cy="13" r="8"/>
-      <ellipse cx="8.5" cy="12" rx="1.8" ry="2.2"/>
-      <ellipse cx="15.5" cy="12" rx="1.8" ry="2.2"/>
-      <circle cx="8.5" cy="12" r=".8" fill="currentColor" stroke="none"/>
-      <circle cx="15.5" cy="12" r=".8" fill="currentColor" stroke="none"/>
-      <path d="M11 16h2"/>
+      <circle cx="4.5" cy="5.5" r="3.5" fill="currentColor"/>
+      <circle cx="19.5" cy="5.5" r="3.5" fill="currentColor"/>
+      <circle cx="12" cy="13.5" r="7.5"/>
+      <ellipse cx="8.5" cy="12.5" rx="1.8" ry="2.2"/>
+      <ellipse cx="15.5" cy="12.5" rx="1.8" ry="2.2"/>
+      <circle cx="8.5" cy="12.5" r=".8" fill="currentColor" stroke="none"/>
+      <circle cx="15.5" cy="12.5" r=".8" fill="currentColor" stroke="none"/>
+      <path d="M11 16.5h2"/>
     </svg>;
     }
     if (kind === 'star') {
@@ -254,7 +318,7 @@ const MarkArt = memo(function MarkArt({ mark, color, ink }: {
     }
     const cx = p.x * 1000, cy = p.y * 700, r = 36 + mark.size * 25, kind = mark.stampKind ?? 'cat';
     return <g className={cls} shapeRendering="geometricPrecision">
-    <CuteStamp kind={kind} cx={cx} cy={cy} r={r} color={color} ink={ink}/>
+    <CuteStamp kind={kind} cx={cx} cy={cy} r={r} color={color} ink={ink} withSeal={true}/>
   </g>;
 });
 const RenderedMark = memo(function RenderedMark({ mark, sound }: {
@@ -290,7 +354,7 @@ function FxArt({ fx }: {
         if (kind === 'frog')
             return <g className="canvas-fx fx-stamp fx-frog">{[28, 48, 70].map((r, i) => <ellipse key={r} cx={cx} cy={cy + i * 3} rx={r} ry={r * .55} fill="none" stroke={fx.color} strokeWidth={4 - i} opacity={.65 - i * .14}/>)}</g>;
         if (kind === 'panda')
-            return <g className="canvas-fx fx-stamp fx-panda">{[-1, 1].map(side => <g key={side}><circle cx={cx + side * 34} cy={cy + 8} r="9" fill="none" stroke={fx.color} strokeWidth="3"/><circle cx={cx + side * 25} cy={cy - 12} r="4" fill={fx.color}/><circle cx={cx + side * 37} cy={cy - 16} r="4" fill={fx.color}/><circle cx={cx + side * 47} cy={cy - 9} r="4" fill={fx.color}/></g>)}</g>;
+            return <g className="canvas-fx fx-stamp fx-panda">{[-1, 1].map(side => <g key={side}><circle cx={cx + side * 36} cy={cy - 26} r={15} fill={fx.color}/><circle cx={cx + side * 36} cy={cy - 26} r={8} fill="none" stroke="white" strokeWidth="2.5" opacity=".7"/><circle cx={cx + side * 25} cy={cy - 6} r={4} fill={fx.color}/><circle cx={cx + side * 37} cy={cy - 10} r={4} fill={fx.color}/><circle cx={cx + side * 47} cy={cy - 3} r={4} fill={fx.color}/></g>)}</g>;
         if (kind === 'rocket')
             return <g className="canvas-fx fx-stamp fx-rocket">{Array.from({ length: 6 }, (_, i) => <path key={i} d={`M ${cx + (i - 2.5) * 7} ${cy + 18 + i * 3} l ${-(i - 2.5) * 4} ${42 + rnd() * 25}`} stroke={fx.color} strokeWidth={3 + rnd() * 4} strokeLinecap="round" opacity={.35 + rnd() * .4}/>)}<circle cx={cx} cy={cy} r="42" fill="none" stroke={fx.color} strokeWidth="4"/></g>;
         if (kind === 'flower')
@@ -368,7 +432,7 @@ export default function App() {
             if (prev.isPlaying && !next.isPlaying) {
                 setEffects([]);
             }
-            const sameDiscrete = prev.isPlaying === next.isPlaying && prev.isPreparing === next.isPreparing && prev.totalDuration === next.totalDuration;
+            const sameDiscrete = prev.isPlaying === next.isPlaying && prev.isPreparing === next.isPreparing && prev.totalDuration === next.totalDuration && prev.isReady === next.isReady;
             const samePausedTime = next.isPlaying || Math.abs(prev.currentTime - next.currentTime) < .001;
             return sameDiscrete && samePausedTime ? prev : next;
         });
@@ -465,23 +529,19 @@ export default function App() {
         audition(mark, false);
     }, [audition, paletteIndex]);
     const auditionColor = useCallback((index: number) => {
-        const c = world.palette[index % world.palette.length];
-        if (!c)
-            return;
-        const note = c.role === 'drums' ? (c.drumNotes?.[0] ?? 50) : world.key;
-        const dummy: NoteEvent = {
-            midi: note,
-            timeOffset: 0,
-            duration: .45,
-            velocity: .65,
-            sound: c.sound,
-            channelIndex: index,
-            channelRole: c.role,
-            ...(c.room !== undefined ? { room: c.room } : {}),
-            ...(c.echo !== undefined ? { echo: c.echo } : {}),
+        void transport.unlockAudio();
+        const mark: CanvasMark = {
+            id: `preview_stamp_color_${Date.now()}`,
+            paletteIndex: index,
+            tool: 'stamp',
+            points: [{ x: .5, y: .5 }],
+            size: 1,
+            seed: Math.floor(Math.random() * 1e9),
+            stampKind,
+            gesture: createGestureStats({ x: .5, y: .5 }),
         };
-        transport.auditionPhrase({ sourceMarkId: 'color_audition', startTime: 0, events: [dummy] }, false);
-    }, [world]);
+        audition(mark, false);
+    }, [audition, stampKind]);
     const publishDraft = useCallback((mark: CanvasMark | null, immediate = false) => {
         draftRef.current = mark;
         if (immediate) {
@@ -620,6 +680,9 @@ export default function App() {
         }
         if (activePointerId.current !== null && activePointerId.current !== e.pointerId)
             return;
+        void transport.unlockAudio();
+        if (!state.isReady)
+            return;
         const rect = e.currentTarget.getBoundingClientRect();
         canvasRect.current = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
         const p = pointFromEvent(e);
@@ -629,7 +692,6 @@ export default function App() {
         }
         catch { /* implicit touch capture is enough */ }
         transport.interruptPlayback();
-        transport.unlockAudio();
         beginCanvasGesture(p, e.pointerType);
     };
     const pointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -720,7 +782,11 @@ export default function App() {
             }
         }}>
     <header className="tiny-topbar">
-      <div className="little-brand"><span>d</span><b>draw sounds</b></div>
+      <div className="little-brand">
+        <span>d</span>
+        <b>draw sounds</b>
+        {!state.isReady && <span className="tuning-badge" aria-live="polite">tuning sounds...</span>}
+      </div>
       <div className="tiny-actions">
         <button onClick={undo} disabled={!marks.length || bombState !== 'idle'} aria-label="Undo last mark"><RotateCcw size={18}/></button>
         <button className={`bomb-reset ${bombState !== 'idle' ? `is-${bombState}` : ''}`} disabled={!marks.length && bombState === 'idle'} aria-label={bombState === 'arming' ? 'Bomb lit. Touch anywhere to cancel' : 'Clear the whole drawing'} onClick={(e: {
@@ -730,16 +796,45 @@ export default function App() {
     </header>
 
     <main className="canvas-stage">
-      <div className={`music-paper ${marks.length ? 'has-marks' : ''} ${state.isPlaying ? 'playing' : ''}`}>
+      <div className={`music-paper ${marks.length ? 'has-marks' : ''} ${state.isPlaying ? 'playing' : ''} ${!state.isReady ? 'is-tuning' : ''}`}>
         {bombState === 'boom' && <div className="reset-boom" aria-hidden="true"><b>✹</b><i /><i /><i /><i /><i /><i /></div>}
-        {!marks.length && !draft && <div className="empty-whisper" aria-hidden="true"><i /><span>draw something noisy</span><i /></div>}
-        <svg className="music-canvas" viewBox="0 0 1000 700" preserveAspectRatio="none" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onLostPointerCapture={pointerUp} onPointerLeave={(e: ReactPointerEvent<SVGSVGElement>) => { if (activePointerId.current !== e.pointerId)
+        {!marks.length && !draft && <div className={`empty-whisper ${!state.isReady ? 'is-tuning' : ''}`} aria-hidden="true"><i /><span>{state.isReady ? 'draw something noisy' : 'tuning instruments...'}</span><i /></div>}
+        {Boolean(marks.length) && !draft && !state.isReady && <div className="empty-whisper is-tuning" aria-hidden="true"><i /><span>tuning instruments...</span><i /></div>}
+        <svg className={`music-canvas ${!state.isReady ? 'is-busy' : ''}`} viewBox="0 0 1000 700" preserveAspectRatio="none" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onLostPointerCapture={pointerUp} onPointerLeave={(e: ReactPointerEvent<SVGSVGElement>) => { if (activePointerId.current !== e.pointerId)
         publishHover(null, true); }}>
           <rect width="1000" height="700" fill="transparent"/>
           <MarksLayer marks={marks} palette={palette}/>
           {draft && <RenderedMark mark={draft} sound={cyclicAt(palette, draft.paletteIndex, 'draft palette')}/>}
           {effects.map(fx => <FxArt key={fx.id} fx={fx}/>)}
-          {hoverPoint && tool !== 'eraser' && <circle className="brush-cursor" cx={hoverPoint.x * 1000} cy={hoverPoint.y * 700} r={tool === 'boom' ? 35 : tool === 'stamp' ? 29 : tool === 'fill' ? 24 : 12} fill={cyclicAt(palette, paletteIndex, 'hover palette').color}/>}
+          {hoverPoint && tool === 'spray' && (() => {
+            const hx = hoverPoint.x * 1000, hy = hoverPoint.y * 700;
+            const col = cyclicAt(palette, paletteIndex, 'hover palette').color;
+            return (
+              <g className="brush-cursor spray-cursor">
+                <circle cx={hx} cy={hy} r={32} fill="none" stroke={col} strokeWidth={1.6} strokeDasharray="3 4" opacity={0.65}/>
+                <circle cx={hx} cy={hy} r={18} fill={col} opacity={0.12}/>
+                <circle cx={hx} cy={hy} r={3.5} fill={col} opacity={0.9}/>
+                <circle cx={hx - 10} cy={hy - 8} r={1.6} fill={col} opacity={0.5}/>
+                <circle cx={hx + 12} cy={hy - 6} r={1.4} fill={col} opacity={0.45}/>
+                <circle cx={hx - 7} cy={hy + 11} r={1.8} fill={col} opacity={0.48}/>
+                <circle cx={hx + 9} cy={hy + 10} r={1.5} fill={col} opacity={0.4}/>
+                <circle cx={hx + 18} cy={hy + 3} r={1.2} fill={col} opacity={0.35}/>
+                <circle cx={hx - 16} cy={hy + 2} r={1.2} fill={col} opacity={0.35}/>
+              </g>
+            );
+          })()}
+          {hoverPoint && tool === 'stamp' && (() => {
+            const hx = hoverPoint.x * 1000, hy = hoverPoint.y * 700;
+            const sound = cyclicAt(palette, paletteIndex, 'hover palette');
+            return (
+              <g className="brush-cursor stamp-cursor">
+                <circle cx={hx} cy={hy} r={34} fill="none" stroke={sound.color} strokeWidth={2.2} strokeDasharray="5 3.5" opacity={0.75}/>
+                <circle cx={hx} cy={hy} r={30} fill={sound.color} opacity={0.12}/>
+                <CuteStamp kind={stampKind} cx={hx} cy={hy} r={23} color={sound.color} ink={sound.ink} monochrome={false}/>
+              </g>
+            );
+          })()}
+          {hoverPoint && tool !== 'eraser' && tool !== 'spray' && tool !== 'stamp' && <circle className="brush-cursor" cx={hoverPoint.x * 1000} cy={hoverPoint.y * 700} r={tool === 'boom' ? 35 : tool === 'fill' ? 24 : 12} fill={cyclicAt(palette, paletteIndex, 'hover palette').color}/>}
           {hoverPoint && tool === 'eraser' && <g className="eraser-cursor"><circle cx={hoverPoint.x * 1000} cy={hoverPoint.y * 700} r="36"/><path d={`M ${hoverPoint.x * 1000 - 15} ${hoverPoint.y * 700 + 8} l 30 -16`}/></g>}
         </svg>
         <div ref={playheadRef} className="playhead" style={{ left: '0%', opacity: state.isPlaying ? 1 : .16 }}><i /></div>
@@ -763,16 +858,12 @@ export default function App() {
                 setTool(t.id);
                 if (t.id === 'stamp')
                     auditionStamp(stampKind);
-            }} aria-label={t.label} title={t.label}>
+            }} aria-label={t.description} title={t.description}>
                 {t.id === 'crayon' && <Pencil size={21} strokeWidth={2.4}/>}
-                {t.id === 'dots' && (<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
-                    <circle cx="4" cy="12" r="2.8"/>
-                    <circle cx="12" cy="12" r="3.2"/>
-                    <circle cx="20" cy="12" r="2.8"/>
-                  </svg>)}
-                {t.id === 'spray' && <Sparkles size={21} strokeWidth={2.2}/>}
-                {t.id === 'stamp' && <StampToolbarIcon kind={stampKind} size={21}/>}
-                {t.id === 'boom' && <span style={{ fontSize: '24px', lineHeight: 1 }} aria-hidden="true">✹</span>}
+                {t.id === 'dots' && <DotsIcon size={21}/>}
+                {t.id === 'spray' && <SprayCanIcon size={21} strokeWidth={2.2}/>}
+                {t.id === 'stamp' && <RubberStampIcon size={21} strokeWidth={2.2}/>}
+                {t.id === 'boom' && <BoomIcon size={21} strokeWidth={2.2}/>}
                 {t.id === 'fill' && <PaintBucket size={21} strokeWidth={2.2}/>}
                 {t.id === 'eraser' && <Eraser size={21} strokeWidth={2.2}/>}
               </button>))) : (<>

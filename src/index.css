@@ -78,6 +78,20 @@ button:disabled,input:disabled {
 .little-brand b {
   font-weight:850
 }
+.tuning-badge {
+  font-size:11px;
+  font-weight:700;
+  padding:2px 8px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--accent) 18%,transparent);
+  color:var(--accent);
+  letter-spacing:.02em;
+  animation:pulse-tuning 1.5s ease-in-out infinite
+}
+@keyframes pulse-tuning {
+  0%,100% { opacity:.55 }
+  50% { opacity:1 }
+}
 .tiny-actions {
   display:flex;
   gap:4px
@@ -184,6 +198,12 @@ button:disabled,input:disabled {
   z-index:2;
   cursor:crosshair
 }
+.music-canvas.is-busy {
+  cursor:wait
+}
+.empty-whisper.is-tuning {
+  animation:pulse-tuning 1.5s ease-in-out infinite
+}
 .mark-fill {
   transition:opacity .18s ease
 }
@@ -224,6 +244,13 @@ button:disabled,input:disabled {
 }
 .brush-cursor {
   opacity:.18;
+  pointer-events:none
+}
+.spray-cursor,
+.stamp-cursor {
+  opacity:.88
+}
+.stamp-seal {
   pointer-events:none
 }
 .eraser-cursor {
