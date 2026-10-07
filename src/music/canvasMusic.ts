@@ -1,91 +1,254 @@
 import type { NoteEvent, Phrase, Song } from '../audio/types';
-import type { CanvasMark, CanvasPoint, CanvasTool, DrawTool, StampKind, WorldConfig, WorldId } from './canvasTypes';
+import { atOrThrow, cyclicAt } from '../utils/arrays';
+import type { CanvasMark, CanvasPoint, WorldConfig, WorldId, } from './canvasTypes';
 import type { PhraseMotif } from './phraseEngine';
-import { buildRelationshipGraph } from './relationships';
 import { compileMarkPhrase, gestureStats, markBounds } from './phraseEngine';
+import { buildRelationshipGraph, type RelationshipKind } from './relationships';
 import { WORLD_MAP, WORLDS } from './worlds/config';
-export type { CanvasMark, CanvasPoint, CanvasTool, DrawTool, StampKind, WorldConfig, WorldId } from './canvasTypes';
-export { WORLD_MAP, WORLDS } from './worlds/config';
-export { createGestureStats, extendGestureStats } from './phraseEngine';
+export type { CanvasMark, CanvasPoint, WorldConfig, WorldId, } from './canvasTypes';
 export { performFloodFill } from './floodFill';
-
-function totalDuration(w:WorldConfig){return w.totalBeats*60/w.tempo;}
-
-// Cache immutable base phrases; relationship overlays are applied afterward.
-type CacheEntry={phrase:Phrase;motif?:PhraseMotif};
-const phraseCache=new Map<string,CacheEntry>();
-function cachePut(key:string,value:CacheEntry){phraseCache.set(key,value);if(phraseCache.size>768){const first=phraseCache.keys().next().value as string|undefined;if(first)phraseCache.delete(first);}}
-function basePhrase(mark:CanvasMark,w:WorldConfig,total:number,voiceOrdinal:number,previous?:PhraseMotif){
-  const key=`${w.id}|${mark.id}|${voiceOrdinal}|${previous?.signature??'-'}`;
-  const hit=phraseCache.get(key);if(hit)return hit;
-  const compiled=compileMarkPhrase(mark,w,total,voiceOrdinal,previous),entry={phrase:{...compiled.phrase,events:compiled.phrase.events.map(e=>({...e}))},motif:compiled.motif};cachePut(key,entry);return entry;
+export { createGestureStats, extendGestureStats } from './phraseEngine';
+export { WORLD_MAP, WORLDS } from './worlds/config';
+function totalDuration(world: WorldConfig): number {
+    return (world.totalBeats * 60) / world.tempo;
 }
-function cleanPhrase(mark:CanvasMark,phrase:Phrase){
-  const b=markBounds(mark),holes=mark.erasures;
-  const events=!holes?.length?phrase.events:phrase.events.filter(e=>{
-    const x=e.canvasX??b.minX,y=e.canvasY??.5;
-    for(const h of holes){const dx=x-h.x,dy=y-h.y,r=h.radius??.05;if(dx*dx+dy*dy<r*r)return false;}
-    return true;
-  });
-  return{...phrase,events:events.map(e=>({...e}))};
+type CacheEntry = {
+    phrase: Phrase;
+    motif?: PhraseMotif;
+};
+const phraseCache = new Map<string, CacheEntry>();
+function cachePut(key: string, value: CacheEntry): void {
+    phraseCache.set(key, value);
+    if (phraseCache.size <= 768)
+        return;
+    const oldestKey = phraseCache.keys().next().value;
+    if (oldestKey !== undefined)
+        phraseCache.delete(oldestKey);
 }
-
-function relationshipEvents(rel:{kind:string;strength:number},source:Phrase,target:Phrase,w:WorldConfig){
-  const out:NoteEvent[]=[];if(!source.events.length||!target.events.length)return out;
-  const beat=60/w.tempo,mode=w.feel.interaction;
-  const profiles={
-    float:{take:1,together:.20,harm:.19,respond:.17,delay:.82,intervals:[7,12],shifts:[0,7],dur:1.35},
-    circle:{take:3,together:.48,harm:.28,respond:.38,delay:.12,intervals:[7,12],shifts:[0,0,0],dur:.72},
-    hook:{take:3,together:.40,harm:.34,respond:.34,delay:.22,intervals:[7,4,12],shifts:[2,0,2],dur:.78},
-    lock:{take:4,together:.50,harm:.31,respond:.36,delay:.08,intervals:[12,7],shifts:[0,0,-2],dur:.58},
-    clave:{take:3,together:.47,harm:.28,respond:.38,delay:.28,intervals:[3,7],shifts:[0,2,-1],dur:.70},
-    odd:{take:2,together:.32,harm:.31,respond:.32,delay:.41,intervals:[6,11,3],shifts:[5,-2,3],dur:.92},
-    sway:{take:2,together:.36,harm:.29,respond:.31,delay:.36,intervals:[3,7],shifts:[0,2],dur:.96},
-    compas:{take:2,together:.42,harm:.27,respond:.32,delay:.18,intervals:[3,7],shifts:[0,0],dur:.70},
-    tension:{take:2,together:.38,harm:.29,respond:.31,delay:.16,intervals:[3,7,10],shifts:[-1,2,0],dur:.76},
-  } as const;
-  const profile=profiles[mode],base=source.events.slice(0,profile.take),targetStrong=target.events.slice(0,profile.take);
-  if(rel.kind==='together'){
-    base.forEach((e,k)=>{const t=targetStrong[k%targetStrong.length];out.push({...e,timeOffset:Math.max(0,(target.startTime+t.timeOffset)-source.startTime),duration:Math.min(e.duration,t.duration)*profile.dur,velocity:e.velocity*profile.together});});
-  }else if(rel.kind==='harmonize'){
-    base.forEach((e,k)=>{const t=targetStrong[k%targetStrong.length],interval=profile.intervals[k%profile.intervals.length];out.push({...e,midi:Math.max(0,Math.min(127,Math.round(t.midi+interval))),timeOffset:Math.max(0,(target.startTime+t.timeOffset)-source.startTime+(mode==='float'?beat*.45:.03)),duration:Math.min(e.duration,t.duration*1.1)*profile.dur,velocity:e.velocity*profile.harm,articulation:mode==='float'?'legato':e.articulation});});
-  }else{
-    const targetTail=target.events.slice(-profile.take),sourceSeed=base.slice().reverse();
-    targetTail.forEach((t,k)=>{const e=sourceSeed[k%sourceSeed.length],shift=profile.shifts[k%profile.shifts.length],delay=beat*(profile.delay+(mode==='clave'&&k%2?.18:mode==='odd'?k*.11:0));out.push({...e,midi:Math.max(0,Math.min(127,e.midi+shift)),timeOffset:Math.max(0,(target.startTime+t.timeOffset+t.duration)-source.startTime+delay),duration:e.duration*profile.dur,velocity:e.velocity*profile.respond,articulation:mode==='float'?'legato':e.articulation});});
-  }
-  return out;
+function basePhrase(mark: CanvasMark, world: WorldConfig, total: number, voiceOrdinal: number, previous?: PhraseMotif): CacheEntry {
+    const key = `${world.id}|${mark.id}|${voiceOrdinal}|${previous?.signature ?? '-'}`;
+    const cached = phraseCache.get(key);
+    if (cached)
+        return cached;
+    const compiled = compileMarkPhrase(mark, world, total, voiceOrdinal, previous);
+    const entry: CacheEntry = {
+        phrase: {
+            ...compiled.phrase,
+            events: compiled.phrase.events.map((event) => ({ ...event })),
+        },
+        ...(compiled.motif ? { motif: compiled.motif } : {}),
+    };
+    cachePut(key, entry);
+    return entry;
 }
-
-export function freezeMark(mark:CanvasMark){const g=gestureStats(mark);return{...mark,points:mark.points.map(p=>({...p})),gesture:{...g},bounds:{...markBounds(mark)},erasures:mark.erasures?.map(e=>({...e})),performance:mark.performance?{...mark.performance,events:mark.performance.events.map(e=>({...e}))}:undefined};}
-export function eraseMarkAt(mark:CanvasMark,p:CanvasPoint,radius=.05){
-  const b=mark.bounds;
-  // Reject distant eraser samples before scanning stroke points.
-  if(b&& (p.x<b.minX-radius||p.x>b.maxX+radius||p.y<b.minY-radius||p.y>b.maxY+radius))return mark;
-  if(mark.tool==='fill'){
-    const fb=b||{minX:0,maxX:1,minY:0,maxY:1};
-    if(p.x<fb.minX-radius||p.x>fb.maxX+radius||p.y<fb.minY-radius||p.y>fb.maxY+radius)return mark;
-    const erasures=[...(mark.erasures||[]),{...p,radius}];if(erasures.length>8)return null;return{...mark,erasures};
-  }
-  const hitRadius=radius*1.2,hitRadius2=hitRadius*hitRadius;
-  let hit=false;
-  for(const pt of mark.points){const dx=pt.x-p.x,dy=pt.y-p.y;if(dx*dx+dy*dy<hitRadius2){hit=true;break;}}
-  if(!hit)return mark;
-  const radius2=radius*radius,remaining=mark.points.filter(pt=>{const dx=pt.x-p.x,dy=pt.y-p.y;return dx*dx+dy*dy>=radius2;});
-  const erasures=[...(mark.erasures||[]),{...p,radius}];if(remaining.length<2)return null;return{...mark,erasures};
+function cleanPhrase(mark: CanvasMark, phrase: Phrase): Phrase {
+    const bounds = markBounds(mark);
+    const holes = mark.erasures;
+    const events = !holes?.length
+        ? phrase.events
+        : phrase.events.filter((event) => {
+            const x = event.canvasX ?? bounds.minX;
+            const y = event.canvasY ?? 0.5;
+            for (const hole of holes) {
+                const dx = x - hole.x;
+                const dy = y - hole.y;
+                const radius = hole.radius ?? 0.05;
+                if (dx * dx + dy * dy < radius * radius)
+                    return false;
+            }
+            return true;
+        });
+    return { ...phrase, events: events.map((event) => ({ ...event })) };
 }
-export function interpretMark(mark:CanvasMark,worldId:WorldId){const w=WORLD_MAP[worldId],total=totalDuration(w),compiled=compileMarkPhrase(mark,w,total,0);return cleanPhrase(mark,compiled.phrase);}
-
-export function interpretCanvas(marks:CanvasMark[],worldId:WorldId):Song{
-  const w=WORLD_MAP[worldId],total=totalDuration(w),motifs=new Map<number,PhraseMotif>(),ordinals=new Map<number,number>(),phrases:Phrase[]=[];
-  for(const mark of marks){const voice=mark.paletteIndex%w.palette.length,ordinal=ordinals.get(voice)??0,previous=motifs.get(voice),compiled=basePhrase(mark,w,total,ordinal,previous);ordinals.set(voice,ordinal+1);if(compiled.motif)motifs.set(voice,compiled.motif);phrases.push(cleanPhrase(mark,compiled.phrase));}
-  const byId=new Map(phrases.map(p=>[p.sourceMarkId,p]));
-  for(const rel of buildRelationshipGraph(marks,w)){const src=byId.get(rel.sourceId),tar=byId.get(rel.targetId);if(src&&tar)src.events.push(...relationshipEvents(rel,src,tar,w));}
-  // Captured performances keep a higher event ceiling than generated phrases.
-  const capturedIds=new Set<string>();for(const mark of marks)if(mark.performance?.worldId===worldId&&mark.performance.events.length)capturedIds.add(mark.id);
-  for(const phrase of phrases){
-    const cap=capturedIds.has(phrase.sourceMarkId)?192:40;
-    phrase.events=phrase.events.filter(e=>Number.isFinite(e.timeOffset)&&Number.isFinite(e.midi)).sort((a,b)=>a.timeOffset-b.timeOffset).slice(0,cap);
-  }
-  return{worldId,baseTempo:w.tempo,totalDuration:total,phrases};
+type RelationshipProfile = {
+    take: number;
+    together: number;
+    harm: number;
+    respond: number;
+    delay: number;
+    intervals: readonly number[];
+    shifts: readonly number[];
+    dur: number;
+};
+const RELATIONSHIP_PROFILES = {
+    float: { take: 1, together: 0.2, harm: 0.19, respond: 0.17, delay: 0.82, intervals: [7, 12], shifts: [0, 7], dur: 1.35 },
+    circle: { take: 3, together: 0.48, harm: 0.28, respond: 0.38, delay: 0.12, intervals: [7, 12], shifts: [0, 0, 0], dur: 0.72 },
+    hook: { take: 3, together: 0.4, harm: 0.34, respond: 0.34, delay: 0.22, intervals: [7, 4, 12], shifts: [2, 0, 2], dur: 0.78 },
+    lock: { take: 4, together: 0.5, harm: 0.31, respond: 0.36, delay: 0.08, intervals: [12, 7], shifts: [0, 0, -2], dur: 0.58 },
+    clave: { take: 3, together: 0.47, harm: 0.28, respond: 0.38, delay: 0.28, intervals: [3, 7], shifts: [0, 2, -1], dur: 0.7 },
+    odd: { take: 2, together: 0.32, harm: 0.31, respond: 0.32, delay: 0.41, intervals: [6, 11, 3], shifts: [5, -2, 3], dur: 0.92 },
+    sway: { take: 2, together: 0.36, harm: 0.29, respond: 0.31, delay: 0.36, intervals: [3, 7], shifts: [0, 2], dur: 0.96 },
+    compas: { take: 2, together: 0.42, harm: 0.27, respond: 0.32, delay: 0.18, intervals: [3, 7], shifts: [0, 0], dur: 0.7 },
+    tension: { take: 2, together: 0.38, harm: 0.29, respond: 0.31, delay: 0.16, intervals: [3, 7, 10], shifts: [-1, 2, 0], dur: 0.76 },
+} as const satisfies Record<WorldConfig['feel']['interaction'], RelationshipProfile>;
+function relationshipEvents(relation: {
+    kind: RelationshipKind;
+    strength: number;
+}, source: Phrase, target: Phrase, world: WorldConfig): NoteEvent[] {
+    if (!source.events.length || !target.events.length)
+        return [];
+    const output: NoteEvent[] = [];
+    const beat = 60 / world.tempo;
+    const mode = world.feel.interaction;
+    const profile = RELATIONSHIP_PROFILES[mode];
+    const base = source.events.slice(0, profile.take);
+    const targetStrong = target.events.slice(0, profile.take);
+    if (relation.kind === 'together') {
+        base.forEach((event, index) => {
+            const targetEvent = cyclicAt(targetStrong, index, 'relationship target events');
+            output.push({
+                ...event,
+                timeOffset: Math.max(0, target.startTime + targetEvent.timeOffset - source.startTime),
+                duration: Math.min(event.duration, targetEvent.duration) * profile.dur,
+                velocity: event.velocity * profile.together,
+            });
+        });
+        return output;
+    }
+    if (relation.kind === 'harmonize') {
+        base.forEach((event, index) => {
+            const targetEvent = cyclicAt(targetStrong, index, 'relationship target events');
+            const interval = cyclicAt(profile.intervals, index, 'relationship intervals');
+            output.push({
+                ...event,
+                midi: Math.max(0, Math.min(127, Math.round(targetEvent.midi + interval))),
+                timeOffset: Math.max(0, target.startTime +
+                    targetEvent.timeOffset -
+                    source.startTime +
+                    (mode === 'float' ? beat * 0.45 : 0.03)),
+                duration: Math.min(event.duration, targetEvent.duration * 1.1) * profile.dur,
+                velocity: event.velocity * profile.harm,
+                ...(mode === 'float' ? { articulation: 'legato' as const } : {}),
+            });
+        });
+        return output;
+    }
+    const targetTail = target.events.slice(-profile.take);
+    const sourceSeed = base.slice().reverse();
+    targetTail.forEach((targetEvent, index) => {
+        const event = cyclicAt(sourceSeed, index, 'relationship source events');
+        const shift = cyclicAt(profile.shifts, index, 'relationship shifts');
+        const delay = beat *
+            (profile.delay +
+                (mode === 'clave' && index % 2 !== 0 ? 0.18 : mode === 'odd' ? index * 0.11 : 0));
+        output.push({
+            ...event,
+            midi: Math.max(0, Math.min(127, event.midi + shift)),
+            timeOffset: Math.max(0, target.startTime + targetEvent.timeOffset + targetEvent.duration - source.startTime + delay),
+            duration: event.duration * profile.dur,
+            velocity: event.velocity * profile.respond,
+            ...(mode === 'float' ? { articulation: 'legato' as const } : {}),
+        });
+    });
+    return output;
 }
-export function randomWorld(exclude?:WorldId):WorldId{const pool=exclude?WORLDS.filter(w=>w.id!==exclude):WORLDS;return pool[Math.floor(Math.random()*pool.length)].id;}
+export function freezeMark(mark: CanvasMark): CanvasMark {
+    const gesture = gestureStats(mark);
+    return {
+        ...mark,
+        points: mark.points.map((point) => ({ ...point })),
+        gesture: { ...gesture },
+        bounds: { ...markBounds(mark) },
+        ...(mark.erasures ? { erasures: mark.erasures.map((erasure) => ({ ...erasure })) } : {}),
+        ...(mark.performance
+            ? {
+                performance: {
+                    ...mark.performance,
+                    events: mark.performance.events.map((event) => ({ ...event })),
+                },
+            }
+            : {}),
+    };
+}
+export function eraseMarkAt(mark: CanvasMark, point: CanvasPoint, radius = 0.05): CanvasMark | null {
+    const bounds = mark.bounds;
+    if (bounds &&
+        (point.x < bounds.minX - radius ||
+            point.x > bounds.maxX + radius ||
+            point.y < bounds.minY - radius ||
+            point.y > bounds.maxY + radius)) {
+        return mark;
+    }
+    if (mark.tool === 'fill') {
+        const fillBounds = bounds ?? { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+        if (point.x < fillBounds.minX - radius ||
+            point.x > fillBounds.maxX + radius ||
+            point.y < fillBounds.minY - radius ||
+            point.y > fillBounds.maxY + radius) {
+            return mark;
+        }
+        const erasures = [...(mark.erasures ?? []), { ...point, radius }];
+        if (erasures.length > 8)
+            return null;
+        return { ...mark, erasures };
+    }
+    const hitRadius = radius * 1.2;
+    const hitRadiusSquared = hitRadius * hitRadius;
+    const hit = mark.points.some((markPoint) => {
+        const dx = markPoint.x - point.x;
+        const dy = markPoint.y - point.y;
+        return dx * dx + dy * dy < hitRadiusSquared;
+    });
+    if (!hit)
+        return mark;
+    const radiusSquared = radius * radius;
+    const remaining = mark.points.filter((markPoint) => {
+        const dx = markPoint.x - point.x;
+        const dy = markPoint.y - point.y;
+        return dx * dx + dy * dy >= radiusSquared;
+    });
+    const erasures = [...(mark.erasures ?? []), { ...point, radius }];
+    if (remaining.length < 2)
+        return null;
+    return { ...mark, erasures };
+}
+export function interpretMark(mark: CanvasMark, worldId: WorldId): Phrase {
+    const world = WORLD_MAP[worldId];
+    const total = totalDuration(world);
+    const compiled = compileMarkPhrase(mark, world, total, 0);
+    return cleanPhrase(mark, compiled.phrase);
+}
+export function interpretCanvas(marks: CanvasMark[], worldId: WorldId): Song {
+    const world = WORLD_MAP[worldId];
+    const total = totalDuration(world);
+    const motifs = new Map<number, PhraseMotif>();
+    const ordinals = new Map<number, number>();
+    const phrases: Phrase[] = [];
+    for (const mark of marks) {
+        const voice = ((mark.paletteIndex % world.palette.length) + world.palette.length) % world.palette.length;
+        const ordinal = ordinals.get(voice) ?? 0;
+        const previous = motifs.get(voice);
+        const compiled = basePhrase(mark, world, total, ordinal, previous);
+        ordinals.set(voice, ordinal + 1);
+        if (compiled.motif)
+            motifs.set(voice, compiled.motif);
+        phrases.push(cleanPhrase(mark, compiled.phrase));
+    }
+    const byId = new Map(phrases.map((phrase) => [phrase.sourceMarkId, phrase]));
+    for (const relation of buildRelationshipGraph(marks, world)) {
+        const source = byId.get(relation.sourceId);
+        const target = byId.get(relation.targetId);
+        if (source && target) {
+            source.events.push(...relationshipEvents(relation, source, target, world));
+        }
+    }
+    const capturedIds = new Set<string>();
+    for (const mark of marks) {
+        if (mark.performance?.worldId === worldId && mark.performance.events.length) {
+            capturedIds.add(mark.id);
+        }
+    }
+    for (const phrase of phrases) {
+        const cap = capturedIds.has(phrase.sourceMarkId) ? 192 : 40;
+        phrase.events = phrase.events
+            .filter((event) => Number.isFinite(event.timeOffset) && Number.isFinite(event.midi))
+            .sort((a, b) => a.timeOffset - b.timeOffset)
+            .slice(0, cap);
+    }
+    return { worldId, baseTempo: world.tempo, totalDuration: total, phrases };
+}
+export function randomWorld(exclude?: WorldId): WorldId {
+    const pool = exclude ? WORLDS.filter((world) => world.id !== exclude) : WORLDS;
+    const index = Math.floor(Math.random() * pool.length);
+    return atOrThrow(pool, index, 'world pool').id;
+}
