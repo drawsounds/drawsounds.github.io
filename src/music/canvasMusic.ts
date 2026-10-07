@@ -97,9 +97,12 @@ function relationshipEvents(relation: {
     if (relation.kind === 'together') {
         base.forEach((event, index) => {
             const targetEvent = cyclicAt(targetStrong, index, 'relationship target events');
+            const flamOffset = (mode === 'circle' && soundSpec(event.sound).bank === 'percussion')
+                ? (index % 2 === 0 ? 0.014 : -0.012) * beat
+                : 0;
             output.push({
                 ...event,
-                timeOffset: Math.max(0, target.startTime + targetEvent.timeOffset - source.startTime),
+                timeOffset: Math.max(0, target.startTime + targetEvent.timeOffset - source.startTime + flamOffset),
                 duration: Math.min(event.duration, targetEvent.duration) * profile.dur,
                 velocity: event.velocity * profile.together,
             });
@@ -110,6 +113,9 @@ function relationshipEvents(relation: {
         base.forEach((event, index) => {
             const targetEvent = cyclicAt(targetStrong, index, 'relationship target events');
             const interval = cyclicAt(profile.intervals, index, 'relationship intervals');
+            const circleSyncopation = (mode === 'circle' && soundSpec(event.sound).bank === 'percussion')
+                ? (index % 2 === 0 ? 0.25 : 0.5) * beat
+                : 0;
             output.push({
                 ...event,
                 // Kit keys identify articulations, not scale degrees. Preserve
@@ -120,7 +126,7 @@ function relationshipEvents(relation: {
                 timeOffset: Math.max(0, target.startTime +
                     targetEvent.timeOffset -
                     source.startTime +
-                    (mode === 'float' ? beat * 0.45 : 0.03)),
+                    (mode === 'float' ? beat * 0.45 : 0.03) + circleSyncopation),
                 duration: Math.min(event.duration, targetEvent.duration * 1.1) * profile.dur,
                 velocity: event.velocity * profile.harm,
                 ...(mode === 'float' ? { articulation: 'legato' as const } : {}),

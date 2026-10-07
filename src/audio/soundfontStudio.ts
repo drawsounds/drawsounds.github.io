@@ -23,12 +23,12 @@ const ROLE_MIX: Record<PerformerRole, {
     echo: number;
     level: number;
 }> = {
-    drums: { pan: 0.05, room: 0.07, echo: 0.015, level: 1.08 },
-    bass: { pan: 0, room: 0.04, echo: 0.015, level: 1.07 },
-    harmony: { pan: 0.12, room: 0.11, echo: 0.05, level: 1.12 },
-    melody: { pan: 0.18, room: 0.13, echo: 0.07, level: 1.16 },
-    texture: { pan: 0.26, room: 0.2, echo: 0.13, level: 1.08 },
-    human: { pan: 0.1, room: 0.15, echo: 0.08, level: 1.12 },
+    drums: { pan: 0.15, room: 0.18, echo: 0.08, level: 1.02 },
+    bass: { pan: 0, room: 0.08, echo: 0.03, level: 1.04 },
+    harmony: { pan: 0.14, room: 0.14, echo: 0.08, level: 0.98 },
+    melody: { pan: 0.18, room: 0.15, echo: 0.10, level: 1.04 },
+    texture: { pan: 0.28, room: 0.22, echo: 0.15, level: 0.96 },
+    human: { pan: 0.12, room: 0.18, echo: 0.10, level: 1.00 },
 };
 const CC_VOLUME = 7;
 const CC_PAN = 10;
@@ -86,12 +86,12 @@ export class SoundFontStudio {
         this.echoFilterR = this.ctx.createBiquadFilter();
         this.panL = this.ctx.createStereoPanner();
         this.panR = this.ctx.createStereoPanner();
-        this.master.gain.value = 0.8;
-        this.safety.threshold.value = -8;
-        this.safety.knee.value = 12;
-        this.safety.ratio.value = 3;
-        this.safety.attack.value = 0.008;
-        this.safety.release.value = 0.18;
+        this.master.gain.value = 0.78;
+        this.safety.threshold.value = -6;
+        this.safety.knee.value = 10;
+        this.safety.ratio.value = 4;
+        this.safety.attack.value = 0.004;
+        this.safety.release.value = 0.14;
         this.synthBus.connect(this.master);
         this.master.connect(this.safety);
         this.safety.connect(this.ctx.destination);
@@ -348,7 +348,11 @@ export class SoundFontStudio {
         const role = ROLE_MIX[event.channelRole ?? 'melody'];
         const index = event.channelIndex ?? 0;
         const side = index % 2 ? 1 : -1;
-        const pan = Math.max(-0.7, Math.min(0.7, event.pan ?? side * role.pan));
+        let basePan = event.pan ?? side * role.pan;
+        if (event.canvasX !== undefined && event.pan === undefined) {
+            basePan += (event.canvasX - 0.5) * 0.32;
+        }
+        const pan = Math.max(-0.75, Math.min(0.75, basePan));
         const room = Math.max(0, Math.min(0.44, event.room ?? role.room));
         const echo = Math.max(0, Math.min(0.4, event.echo ?? role.echo));
         const next: ChannelMix = {

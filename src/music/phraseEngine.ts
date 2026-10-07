@@ -692,42 +692,66 @@ function dreamlandTechnique(mark: CanvasMark, w: WorldConfig, p: Performer, tota
 function drumCircleTechnique(mark: CanvasMark, w: WorldConfig, p: Performer, _total: number, i: number, _intent: PhraseIntent) {
     const beat = beatSeconds(w), pt = mark.points[0] || { x: .5, y: .5 };
     const kind = mark.stampKind || 'star';
-    const notes = p.drumNotes?.length ? p.drumNotes : [48, 50, 52, 53, 58, 59, 60];
+    const notes = p.drumNotes?.length ? p.drumNotes : [48, 49, 50, 51];
     const out: NoteEvent[] = [];
-    const hit = (idx: number, rb: number, v: number, d = .16) => {
-        out.push(event(cyclicAt(notes, idx, 'drum circle notes'), rb * beat, beat * d, v, extra(p, i, pt)));
+    const hit = (idx: number, rb: number, v: number, d = .16, perf = p, chIdx = i, flamOffset = 0) => {
+        const perfNotes = perf.drumNotes?.length ? perf.drumNotes : notes;
+        const midi = cyclicAt(perfNotes, idx, 'drum circle notes');
+        const time = Math.max(0, rb * beat + flamOffset);
+        out.push(event(midi, time, beat * d, v, extra(perf, chIdx, pt)));
     };
+    const compIdx = (i + 3) % w.palette.length;
+    const companion = w.palette[compIdx] ?? p;
+    const compNotes = companion.drumNotes?.length ? companion.drumNotes : notes;
+    const compHit = (idx: number, rb: number, v: number, d = .16) => {
+        hit(idx, rb, v, d, companion, compIdx);
+    };
+
     if (kind === 'cat') {
-        // Pounce slap: rapid flam into high crack
-        hit(0, 0, .42, .08);
-        hit(notes.length - 1, .06, .74, .14);
-        hit(1, .35, .52, .12);
-        hit(notes.length - 2, .75, .66, .16);
+        // Pounce slap: rapid flam into high crack by caller, answered by low companion thump
+        hit(0, 0, .44, .08, p, i, -0.018);
+        hit(notes.length - 1, 0, .78, .14);
+        hit(1, .35, .54, .12);
+        compHit(0, .50, .66, .22);
+        hit(notes.length > 2 ? notes.length - 2 : 0, .75, .70, .16);
+        compHit(compNotes.length - 1, .95, .62, .14);
     } else if (kind === 'frog') {
-        // Frog call: low dun-dun / djembe resonance
-        hit(0, 0, .68, .26);
-        hit(1, .28, .54, .22);
-        hit(0, .65, .72, .28);
-        hit(2, 1.1, .48, .18);
+        // Frog call: low dun-dun resonance answered by warm companion heartbeat
+        hit(0, 0, .72, .26);
+        hit(1, .28, .56, .22);
+        compHit(0, .50, .60, .24);
+        hit(0, .75, .74, .28);
+        compHit(compNotes.length > 1 ? 1 : 0, 1.05, .52, .20);
+        hit(notes.length > 2 ? 2 : 0, 1.25, .50, .18);
     } else if (kind === 'panda') {
-        // Heavy tribal stomp
-        [0, .75, 1.5, 2.25].forEach((b, k) => hit(k === 0 || k === 2 ? 0 : 1, b, k === 0 ? .80 : .60, .20));
+        // Heavy tribal stomp: deep caller pulse locked with syncopated companion accents
+        hit(0, 0, .84, .24);
+        compHit(compNotes.length - 1, .50, .54, .12);
+        hit(notes.length > 1 ? 1 : 0, .75, .62, .18);
+        compHit(0, 1.25, .68, .22);
+        hit(0, 1.5, .82, .24);
+        compHit(compNotes.length - 1, 2.0, .56, .12);
+        hit(notes.length > 1 ? 1 : 0, 2.25, .60, .18);
     } else if (kind === 'star') {
-        // Polyrhythmic call burst: 3 against 2
-        [0, .33, .66, 1.0, 1.33, 1.66].forEach((b, k) => hit(k % notes.length, b, .54 + (k === 0 ? .18 : 0), .12));
+        // Polyrhythmic call burst: 3 against 2 interlocking dialogue across the circle
+        [0, .33, .66, 1.0, 1.33].forEach((b, k) => hit(k % notes.length, b, .56 + (k === 0 ? .18 : 0), .12));
+        [0, .5, 1.0, 1.5].forEach((b, k) => compHit(k % compNotes.length, b, .48 + (k === 0 ? .12 : 0), .14));
     } else if (kind === 'rocket') {
-        // Rolling hands: accelerating crescendo roll
-        [0, .14, .26, .36, .44, .50, .62].forEach((b, k) => hit(k % 3, b, .36 + k * .065, .10));
-        hit(0, .80, .78, .30);
+        // Rolling hands: accelerating crescendo roll exploding in tutti unison
+        [0, .12, .24, .34, .42, .48, .54, .60].forEach((b, k) => hit(k % notes.length, b, .36 + k * .055, .10));
+        hit(0, .75, .86, .32);
+        compHit(0, .75, .82, .32);
     } else if (kind === 'flower') {
-        // Circle response: interlocking communal pattern
-        [0, .5, 1.0, 1.5, 2.0, 2.5].forEach((b, k) => hit(k % notes.length, b, .50 + (k % 2 === 0 ? .12 : 0), .18));
+        // Circle response: interlocking communal pattern (caller downbeats, companion upbeats)
+        [0, 1.0, 2.0].forEach((b, k) => hit(k % notes.length, b, .68 + (k === 0 ? .10 : 0), .20));
+        [0.5, 1.5, 2.5].forEach((b, k) => compHit(k % compNotes.length, b, .60 + (k === 0 ? .08 : 0), .18));
     } else {
-        // Clap break: double rimshot crack + break
-        hit(notes.length - 1, 0, .76, .12);
-        hit(notes.length - 1, .08, .80, .12);
-        hit(0, .45, .70, .22);
-        hit(1, .85, .66, .18);
+        // Clap break: double rimshot crack + break answered by circle response
+        hit(notes.length - 1, 0, .78, .12);
+        hit(notes.length - 1, .07, .82, .12);
+        compHit(0, .42, .72, .20);
+        hit(0, .75, .72, .22);
+        compHit(compNotes.length - 1, .85, .68, .16);
     }
     return out;
 }
@@ -986,10 +1010,18 @@ function boomPhrase(mark: CanvasMark, w: WorldConfig, p: Performer, total: numbe
             add(crash, beat * .22, beat * 1.5, .80, 'accent');
         } else if (w.id === 'drum_circle') {
             // Thunderous communal drum circle unison explosion
-            add(drums[0] ?? 48, 0, beat * .45, .90, 'accent');
-            add(drums[drums.length - 1] ?? 64, beat * .04, beat * .24, .85, 'accent');
-            add(drums[1] ?? 51, beat * .12, beat * .20, .80, 'staccato');
-            add(drums[2] ?? 66, beat * .22, beat * .40, .86, 'accent');
+            const low = cyclicAt(drums, 0, 'boom drum low');
+            const hi = cyclicAt(drums, drums.length - 1, 'boom drum hi');
+            const mid = cyclicAt(drums, 1, 'boom drum mid');
+            add(low, 0, beat * .45, .88, 'accent');
+            add(hi, beat * .02, beat * .24, .84, 'accent');
+            add(mid, beat * .12, beat * .20, .78, 'staccato');
+            add(low, beat * .24, beat * .40, .86, 'accent');
+            const compIdx = (i + 3) % w.palette.length;
+            const comp = w.palette[compIdx] ?? p;
+            const compNotes = comp.drumNotes?.length ? comp.drumNotes : drums;
+            out.push(event(cyclicAt(compNotes, 0, 'boom comp low'), beat * .015, beat * .42, .84, extra(comp, compIdx, pt)));
+            out.push(event(cyclicAt(compNotes, compNotes.length - 1, 'boom comp hi'), beat * .14, beat * .22, .78, extra(comp, compIdx, pt)));
         } else {
             // Heavy stadium crash impact + kick + snare crack
             add(kick, 0, beat * .35, .88, 'accent');
@@ -1102,7 +1134,12 @@ function dotsPhrase(mark: CanvasMark, w: WorldConfig, p: Performer, total: numbe
             const drums = p.drumNotes || [36, 38, 42];
             const drumIdx = Math.floor(clamp(1 - pt.y) * drums.length);
             const drumNote = cyclicAt(drums, (drumIdx + voiceOrdinal) % drums.length, 'dots drum note');
-            out.push(event(drumNote, timeOffset, beat * .10, .54 + dynamicAccent, { ...extra(p, i, pt), articulation: 'staccato' }));
+            const hitVel = clamp(.54 + dynamicAccent + (w.id === 'drum_circle' ? (k % 2 === 0 ? .08 : -.04) : 0), 0.20, 0.88);
+            out.push(event(drumNote, timeOffset, beat * .11, hitVel, { ...extra(p, i, pt), articulation: 'staccato' }));
+            if (w.id === 'drum_circle' && (k === 0 || dynamicAccent > .10)) {
+                // Subtle human acoustic flam (grace-note tap 22ms prior)
+                out.push(event(drumNote, Math.max(0, timeOffset - 0.022), beat * .06, clamp(hitVel * .65, 0.15, 0.55), { ...extra(p, i, pt), articulation: 'staccato' }));
+            }
         } else if (p.role === 'bass') {
             const isTango = w.id === 'tango';
             out.push(event(m, timeOffset, beat * (isTango ? .12 : .14), .62 + dynamicAccent, {
@@ -1142,9 +1179,14 @@ function sprayPhrase(mark: CanvasMark, w: WorldConfig, p: Performer, total: numb
         const absTime = intent.startTime + timeOffset;
         if (p.role === 'drums') {
             const drums = p.drumNotes || [36, 38, 42];
-            // Rapid shaker / snare roll / cascara rattle
-            const note = cyclicAt(drums, 2 + Math.floor(r() * Math.max(1, drums.length - 2)), 'spray drum');
-            out.push(event(note, timeOffset, beat * .08, .36 + r() * .24 + (k % 2 ? .08 : 0), { ...extra(p, i, pt), articulation: 'staccato' }));
+            // Rapid acoustic shaker / hand roll / cascara rattle
+            const noteIdx = w.id === 'drum_circle'
+                ? Math.floor(r() * drums.length)
+                : (2 + Math.floor(r() * Math.max(1, drums.length - 2)));
+            const note = cyclicAt(drums, noteIdx, 'spray drum');
+            const humanNudge = w.id === 'drum_circle' ? (r() - 0.5) * 0.018 * beat : 0;
+            const sprayVel = clamp(.36 + r() * .26 + (k % 2 ? .08 : 0), 0.18, 0.82);
+            out.push(event(note, Math.max(0, timeOffset + humanNudge), beat * .09, sprayVel, { ...extra(p, i, pt), articulation: 'staccato' }));
         } else if (p.role === 'harmony') {
             const ch = chord(w, absTime, total);
             const degree = cyclicAt(ch, Math.floor(r() * ch.length), 'spray chord');
@@ -1189,8 +1231,24 @@ function fillPhrase(mark: CanvasMark, w: WorldConfig, p: Performer, total: numbe
             });
         } else if (p.role === 'drums') {
             const drums = p.drumNotes || [36, 38, 42];
-            out.push(event(drums[0] ?? 36, timeOffset, beat * .22, .54, { ...extra(p, i, pt), articulation: 'accent' }));
-            out.push(event(drums[drums.length - 1] ?? 42, timeOffset + beat * 2, beat * .18, .42, { ...extra(p, i, pt), articulation: 'staccato' }));
+            if (w.id === 'drum_circle') {
+                // Rich communal drum circle background bed: bass pulse, open tones, rim tap
+                const low = cyclicAt(drums, 0, 'fill drum low');
+                const mid = cyclicAt(drums, Math.floor(drums.length / 2), 'fill drum mid');
+                const hi = cyclicAt(drums, drums.length - 1, 'fill drum hi');
+                out.push(event(low, timeOffset, beat * .28, .64, { ...extra(p, i, pt), articulation: 'accent' }));
+                out.push(event(mid, timeOffset + beat * 1.5, beat * .22, .54, { ...extra(p, i, pt), articulation: 'tenuto' }));
+                out.push(event(hi, timeOffset + beat * 2.5, beat * .18, .56, { ...extra(p, i, pt), articulation: 'staccato' }));
+                // Companion interlocking fill from across the circle
+                const compIdx = (i + 3) % w.palette.length;
+                const comp = w.palette[compIdx] ?? p;
+                const compDrums = comp.drumNotes?.length ? comp.drumNotes : drums;
+                out.push(event(cyclicAt(compDrums, 0, 'fill comp low'), timeOffset + beat * 1.0, beat * .24, .56, { ...extra(comp, compIdx, pt), articulation: 'tenuto' }));
+                out.push(event(cyclicAt(compDrums, compDrums.length - 1, 'fill comp hi'), timeOffset + beat * 3.0, beat * .18, .52, { ...extra(comp, compIdx, pt), articulation: 'staccato' }));
+            } else {
+                out.push(event(drums[0] ?? 36, timeOffset, beat * .22, .54, { ...extra(p, i, pt), articulation: 'accent' }));
+                out.push(event(drums[drums.length - 1] ?? 42, timeOffset + beat * 2, beat * .18, .42, { ...extra(p, i, pt), articulation: 'staccato' }));
+            }
         } else if (p.role === 'human') {
             const shift = (voiceOrdinal % 2 === 1) ? 12 : 7;
             out.push(event(base + shift, timeOffset, beat * 3.8, .48, { ...extra(p, i, pt), articulation: 'legato' }));
@@ -1879,25 +1937,47 @@ function wildDrums(mark: CanvasMark, w: WorldConfig, p: Performer, i: number, in
                 [0, .375, .75, 1.25, 1.625, 2.0, 2.5].forEach(x => hit(cycle + x, 4, .48, .08));
             }
         } else if (w.id === 'drum_circle') {
+            const compIdx = (i + 3) % w.palette.length;
+            const companion = w.palette[compIdx] ?? p;
+            const compNotes = companion.drumNotes?.length ? companion.drumNotes : notes;
+            const compHit = (offset: number, index: number, v: number, d = .12) => {
+                const rb = cycle + offset;
+                if (rb >= intent.beats) return;
+                const nudge = (r() - 0.5) * 0.016 * beat;
+                out.push(event(cyclicAt(compNotes, index, 'companion drum'), Math.max(0, rb * beat + nudge), beat * d, clamp(v + (r() - 0.5) * 0.06, 0.22, 0.82), extra(companion, compIdx, pointAt(mark, rb / Math.max(1, intent.beats)))));
+            };
+
             if (patIdx === 1) {
-                // High hand drum call-and-response with shaker drive
-                [0, .5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5].forEach(x => hit(cycle + x, 3, .46, .08));
-                [0, 1.25, 2.0, 3.25].forEach(x => hit(cycle + x, 1, .68, .16));
+                // High hand drum call-and-response with interlocking companion groove
+                [0, 1.0, 2.0, 3.0].forEach((x, k) => hit(cycle + x, k % 2 === 0 ? 0 : 1, .68 + (k === 0 ? .12 : 0), .16));
+                [0.5, 1.5, 2.5, 3.5].forEach((x, k) => compHit(x, k % compNotes.length, .54, .10));
+                if (intent.energy > .6) {
+                    hit(cycle + 1.75, notes.length - 1, .58, .08);
+                    compHit(3.75, 0, .64, .12);
+                }
             } else if (patIdx === 2) {
-                // Polyrhythmic 3-against-2 interlocking groove
-                [0, 1.33, 2.66].forEach(x => hit(cycle + x, 0, .72, .20));
-                [0, 1.0, 2.0, 3.0].forEach(x => hit(cycle + x, 2, .56, .12));
+                // Polyrhythmic 3-against-2 interlocking conversation across the circle
+                [0, 1.33, 2.66].forEach((x, k) => hit(cycle + x, k % notes.length, .72 + (k === 0 ? .10 : 0), .18));
+                [0, 1.0, 2.0, 3.0].forEach((x, k) => compHit(x, (k % 2 === 0 ? 0 : compNotes.length - 1), .56, .12));
+                compHit(2.5, 1, .52, .10);
             } else if (patIdx === 3) {
-                // Fast celebratory solo burst
-                for (let x = 0; x < 4; x += .33) hit(cycle + x, Math.floor(r() * notes.length), .56 + r() * .18, .10);
+                // Celebratory syncopated hand dance with conversational fills
+                [0, .75, 1.5, 2.25, 3.0].forEach((x, k) => hit(cycle + x, k % notes.length, .64 + (k === 0 ? .14 : 0), .14));
+                [0.375, 1.125, 2.625].forEach((x, k) => compHit(x, k % compNotes.length, .52, .09));
+                hit(cycle + 3.5, notes.length - 1, .70, .10);
+                compHit(3.75, 0, .72, .18);
             } else {
-                // African polyrhythmic hand groove
+                // African polyrhythmic heartbeat with supporting circle pulse
                 [0, .66, 1.33, 2.0, 2.66, 3.33].forEach((x, k) => {
-                    hit(cycle + x, k % 2 === 0 ? 0 : 1, .60 + (k === 0 ? .18 : 0), .18);
+                    hit(cycle + x, k % 2 === 0 ? 0 : (notes.length > 1 ? 1 : 0), .62 + (k === 0 ? .16 : 0), .18);
                 });
-                [0, .5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5].forEach((x, k) => {
-                    hit(cycle + x, 2 + (k % Math.max(1, notes.length - 2)), .42 + r() * .14, .10);
+                [0, 1.0, 2.0, 3.0].forEach((x, k) => {
+                    compHit(x, k % compNotes.length, .50 + (k === 0 ? .10 : 0), .12);
                 });
+                if (intent.energy > .5) {
+                    compHit(1.75, compNotes.length - 1, .56, .09);
+                    compHit(3.75, compNotes.length - 1, .58, .09);
+                }
             }
         } else {
             [0, .75, 1.5, 2.25, 3.25].forEach((x, k) => hit(cycle + x, k % notes.length, .44 + r() * .18, .14));
