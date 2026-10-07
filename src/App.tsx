@@ -110,10 +110,15 @@ function pathFrom(points: CanvasPoint[], dx = 0, dy = 0) {
     }
     return path;
 }
-function starPoints(cx: number, cy: number, r: number, n = 5) { const pts: string[] = []; for (let i = 0; i < n * 2; i++) {
-    const a = -Math.PI / 2 + i * Math.PI / n, rr = i % 2 === 0 ? r : r * .43;
-    pts.push(`${cx + Math.cos(a) * rr},${cy + Math.sin(a) * rr}`);
-} return pts.join(' '); }
+function starPoints(cx: number, cy: number, radius: number, points = 5): string {
+    const coordinates: string[] = [];
+    for (let index = 0; index < points * 2; index++) {
+        const angle = -Math.PI / 2 + index * Math.PI / points;
+        const pointRadius = index % 2 === 0 ? radius : radius * 0.43;
+        coordinates.push(`${cx + Math.cos(angle) * pointRadius},${cy + Math.sin(angle) * pointRadius}`);
+    }
+    return coordinates.join(' ');
+}
 function CuteStamp({ kind, cx, cy, r, color, ink, monochrome = false, withSeal = false }: {
     kind: StampKind;
     cx: number;
@@ -292,8 +297,20 @@ const MarkArt = memo(function MarkArt({ mark, color, ink }: {
       <path d={path} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={Math.max(1.8, sw * 0.24)} strokeLinecap="round" strokeLinejoin="round"/>
     </g>;
     }
-    if (mark.tool === 'dots')
-        return <g className={cls}>{mark.points.map((pt, i) => { const r = 7 + mark.size * 7 + (i % 3); return <g key={i}><circle cx={pt.x * 1000} cy={pt.y * 700} r={r} fill={color}/>{i % 3 === 0 && <circle cx={pt.x * 1000} cy={pt.y * 700} r={r * 1.7} fill="none" stroke={color} strokeWidth={2.3} opacity=".26"/>}{i % 5 === 0 && <circle cx={pt.x * 1000 + r * 1.4} cy={pt.y * 700 - r * .8} r={r * .25} fill={color} opacity=".55"/>}</g>; })}</g>;
+    if (mark.tool === 'dots') {
+        return <g className={cls}>
+            {mark.points.map((point, index) => {
+                const x = point.x * 1000;
+                const y = point.y * 700;
+                const radius = 7 + mark.size * 7 + (index % 3);
+                return <g key={index}>
+                    <circle cx={x} cy={y} r={radius} fill={color}/>
+                    {index % 3 === 0 && <circle cx={x} cy={y} r={radius * 1.7} fill="none" stroke={color} strokeWidth={2.3} opacity=".26"/>}
+                    {index % 5 === 0 && <circle cx={x + radius * 1.4} cy={y - radius * .8} r={radius * .25} fill={color} opacity=".55"/>}
+                </g>;
+            })}
+        </g>;
+    }
     if (mark.tool === 'spray') {
         const dots: Array<{
             x: number;
@@ -302,11 +319,29 @@ const MarkArt = memo(function MarkArt({ mark, color, ink }: {
             op: number;
             dash?: boolean;
         }> = [];
-        mark.points.forEach((pt, pi) => { const burst = 2 + Math.floor(rnd() * 10) + (pi % 5 === 0 ? 4 : 0), lean = (rnd() - .5) * 1.3; for (let i = 0; i < burst; i++) {
-            const a = rnd() * Math.PI * 2 + lean, d = Math.pow(rnd(), 1.65) * (18 + rnd() * 58) * mark.size;
-            dots.push({ x: pt.x * 1000 + Math.cos(a) * d + (rnd() - .5) * 10, y: pt.y * 700 + Math.sin(a) * d + (rnd() - .5) * 7, r: .8 + Math.pow(rnd(), 2) * 8.5, op: .18 + rnd() * .7, dash: i === 0 && pi % 3 === 0 });
-        } if (rnd() > .58)
-            dots.push({ x: pt.x * 1000 + (rnd() - .5) * 14, y: pt.y * 700 + (rnd() - .5) * 12, r: 3 + rnd() * 9, op: .48 + rnd() * .4 }); });
+        mark.points.forEach((point, pointIndex) => {
+            const burst = 2 + Math.floor(rnd() * 10) + (pointIndex % 5 === 0 ? 4 : 0);
+            const lean = (rnd() - .5) * 1.3;
+            for (let index = 0; index < burst; index++) {
+                const angle = rnd() * Math.PI * 2 + lean;
+                const distance = Math.pow(rnd(), 1.65) * (18 + rnd() * 58) * mark.size;
+                dots.push({
+                    x: point.x * 1000 + Math.cos(angle) * distance + (rnd() - .5) * 10,
+                    y: point.y * 700 + Math.sin(angle) * distance + (rnd() - .5) * 7,
+                    r: .8 + Math.pow(rnd(), 2) * 8.5,
+                    op: .18 + rnd() * .7,
+                    dash: index === 0 && pointIndex % 3 === 0,
+                });
+            }
+            if (rnd() > .58) {
+                dots.push({
+                    x: point.x * 1000 + (rnd() - .5) * 14,
+                    y: point.y * 700 + (rnd() - .5) * 12,
+                    r: 3 + rnd() * 9,
+                    op: .48 + rnd() * .4,
+                });
+            }
+        });
         // Hundreds of individual SVG circles per spray mark eventually dominate
         // paint/reconciliation cost. Quantize opacity very slightly and batch all
         // particles in each band into a single compound path.

@@ -22,9 +22,14 @@ let fillScratch: {
     wallDepth: Uint8Array;
     stack: Int32Array;
 } | null = null;
-function scratch() {
-    if (!fillScratch)
-        fillScratch = { filled: new Uint8Array(PIXEL_COUNT), wallDepth: new Uint8Array(PIXEL_COUNT), stack: new Int32Array(PIXEL_COUNT) };
+function scratch(): NonNullable<typeof fillScratch> {
+    if (!fillScratch) {
+        fillScratch = {
+            filled: new Uint8Array(PIXEL_COUNT),
+            wallDepth: new Uint8Array(PIXEL_COUNT),
+            stack: new Int32Array(PIXEL_COUNT),
+        };
+    }
     fillScratch.filled.fill(0);
     fillScratch.wallDepth.fill(0);
     return fillScratch;
@@ -57,10 +62,14 @@ function closedBoundaryMask(marks: CanvasMark[]) {
         sCtx.lineCap = 'round';
         sCtx.lineJoin = 'round';
         sCtx.strokeStyle = '#000';
-        mark.points.forEach((pt, i) => { const px = pt.x * W, py = pt.y * H; if (i === 0)
-            sCtx.moveTo(px, py);
-        else
-            sCtx.lineTo(px, py); });
+        mark.points.forEach((point, index) => {
+            const x = point.x * W;
+            const y = point.y * H;
+            if (index === 0)
+                sCtx.moveTo(x, y);
+            else
+                sCtx.lineTo(x, y);
+        });
         sCtx.stroke();
         if (mark.erasures?.length) {
             sCtx.save();
@@ -74,10 +83,12 @@ function closedBoundaryMask(marks: CanvasMark[]) {
             sCtx.restore();
         }
     }
-    const strokeData = sCtx.getImageData(0, 0, W, H).data, strokeMask = new Uint8Array(W * H);
-    for (let i = 0; i < W * H; i++)
-        if ((strokeData[i * 4 + 3] ?? 0) > 40)
-            strokeMask[i] = 1;
+    const pixels = sCtx.getImageData(0, 0, W, H).data;
+    const strokeMask = new Uint8Array(PIXEL_COUNT);
+    for (let index = 0; index < PIXEL_COUNT; index++) {
+        if ((pixels[index * 4 + 3] ?? 0) > 40)
+            strokeMask[index] = 1;
+    }
     const closedMask = new Uint8Array(strokeMask);
     for (let y = 0; y < H; y++)
         for (let x = 0; x < W; x++)
