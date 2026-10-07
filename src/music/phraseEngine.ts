@@ -296,12 +296,76 @@ else if (id === 'yumba') {
 else {
     [0, 7, 3, 7, 0, 10].forEach((d, k) => out.push(event(base + d, k * beat * .34, beat * .48, .45 + (k === 0 ? .08 : 0), { ...extra(p, i, pt), articulation: 'tenuto' })));
 } return out; }
+function weirdCabinetTechnique(mark: CanvasMark, w: WorldConfig, p: Performer, total: number, i: number): NoteEvent[] {
+    const beat = beatSeconds(w), pt = mark.points[0] || { x: .5, y: .5 }, base = w.key + (p.octave - 4) * 12, ch = chord(w, pt.x * total, total);
+    const choice = w.stamps.find(s => s.id === mark.stampKind);
+    const id = choice?.technique || mark.stampKind || 'theremin';
+    const out: NoteEvent[] = [];
+    const add = (m: number, t: number, d: number, v: number, sound: NoteEvent['sound'], art: NoteEvent['articulation'] = 'tenuto', glide?: number) => {
+        const e = event(m, t, d, v, { ...extra(p, i, pt), sound, articulation: art });
+        if (glide !== undefined)
+            e.glideToMidi = glide;
+        out.push(e);
+        return e;
+    };
+    if (id === 'theremin') {
+        const start = nearest(w, base + 7, pt.x * total, total);
+        const mid = nearest(w, base + 12, pt.x * total, total);
+        const end = nearest(w, base + 14, pt.x * total, total);
+        add(start, 0, beat * 0.9, 0.48, 'theremin', 'legato', mid);
+        add(mid, beat * 0.35, beat * 0.9, 0.52, 'theremin', 'legato', end);
+        add(end, beat * 0.75, beat * 1.4, 0.46, 'theremin', 'tenuto');
+    }
+    else if (id === 'hurdy_gurdy') {
+        add(base - 12, 0, beat * 1.8, 0.50, 'hurdy_gurdy', 'tenuto');
+        add(base - 5, 0, beat * 1.8, 0.42, 'hurdy_gurdy', 'tenuto');
+        [0, 2, 3, 5, 3, 0].forEach((d, k) => {
+            add(base + d, k * beat * 0.26, beat * 0.28, 0.45 + (k % 2 ? 0.05 : 0), 'hurdy_gurdy', k % 2 === 0 ? 'accent' : 'staccato');
+        });
+    }
+    else if (id === 'glass_harmonica') {
+        ch.slice(0, 4).forEach((d, k) => {
+            add(base + d + 12, k * 0.06, beat * 2.2, 0.38 - k * 0.02, 'glass_harmonica', 'legato');
+        });
+        add(base + chordDegree(ch, 2, 7) + 24, beat * 0.3, beat * 1.8, 0.36, 'glass_harmonica', 'legato');
+    }
+    else if (id === 'musical_saw') {
+        const m1 = nearest(w, base + 5, pt.x * total, total);
+        const m2 = nearest(w, base + 10, pt.x * total, total);
+        add(m1, 0, beat * 0.85, 0.46, 'musical_saw', 'legato', m2);
+        add(m2, beat * 0.42, beat * 1.5, 0.50, 'musical_saw', 'tenuto', m1 + 2);
+    }
+    else if (id === 'waterphone') {
+        [0, 6, 11, 13, 17].forEach((d, k) => {
+            add(base + d + 7, k * beat * 0.16, beat * (1.6 + k * 0.2), 0.34 + k * 0.02, 'waterphone', 'legato');
+        });
+    }
+    else if (id === 'nyckelharpa') {
+        add(base - 7, 0, beat * 1.6, 0.46, 'nyckelharpa', 'tenuto');
+        [0, 3, 7, 5].forEach((d, k) => {
+            add(base + d, k * beat * 0.32, beat * 0.44, 0.48 + (k === 0 ? 0.08 : 0), 'nyckelharpa', 'accent');
+        });
+    }
+    else if (id === 'ondioline') {
+        [0, 2, 0, 2, 3, 5, 7].forEach((d, k) => {
+            add(base + d, k * beat * 0.18, beat * 0.22, 0.46 + (k % 2 ? 0.06 : 0), 'ondioline', k === 0 ? 'accent' : 'staccato');
+        });
+    }
+    else {
+        ch.slice(0, 3).forEach((d, k) => {
+            add(base + d, k * beat * 0.2, beat * 1.2, 0.42, 'theremin', 'tenuto');
+        });
+    }
+    return out;
+}
 // Stable stamp gestures are interpreted through each world's own musical vocabulary.
 function worldStampPhrase(mark: CanvasMark, w: WorldConfig, p: Performer, total: number, i: number, intent: PhraseIntent) {
     if (w.id === 'flamenco')
         return flamencoTechnique(mark, w, p, total, i);
     if (w.id === 'tango')
         return tangoTechnique(mark, w, p, total, i);
+    if (w.id === 'weird_cabinet')
+        return weirdCabinetTechnique(mark, w, p, total, i);
     const beat = beatSeconds(w), pt = mark.points[0] || { x: .5, y: .5 }, abs = intent.startTime, kind = mark.stampKind || 'star', out: NoteEvent[] = [], r = rng(intent.seed ^ 0x57A6), base = w.key + (p.octave - 4) * 12;
     const popFlavor = { cat: [0, 4, 2], frog: [0, -2, 2, 0], panda: [0, 1, 0, 2, 1], burst: [0, 2, 4, 2], rise: [0, 1, 2, 4, 5], hit: [0, 4, 0], burstGap: .22, riseGap: .28 };
     const flavor: Record<string, typeof popFlavor> = {

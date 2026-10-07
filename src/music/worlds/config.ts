@@ -21,7 +21,26 @@ const drumStamps = seven({ cat: 'Pounce slap', frog: 'Frog call', panda: 'Panda 
 const popStamps = seven({ cat: 'Hook pounce', frog: 'Bounce hook', panda: 'Panda bounce', star: 'Hook burst', rocket: 'Riser', flower: 'Chorus bloom', lightning: 'Downbeat hit' });
 const rockStamps = seven({ cat: 'Riff pounce', frog: 'Low growl', panda: 'Panda stomp', star: 'Crash burst', rocket: 'Feedback rise', flower: 'Anthem chord', lightning: 'Power hit' });
 const salsaStamps = seven({ cat: 'Mambo pounce', frog: 'Tumbao call', panda: 'Panda pulse', star: 'Campana burst', rocket: 'Brass rise', flower: 'Coro bloom', lightning: 'Mambo stab' });
-const weirdStamps = seven({ cat: 'Clockwork cat', frog: 'Croak wobble', panda: 'Clockwork panda', star: 'Music-box burst', rocket: 'Theremin swoop', flower: 'Water bloom', lightning: 'Metal snap' });
+const weirdStamps = seven(
+    {
+        cat: 'Theremin',
+        frog: 'Hurdy Gurdy',
+        panda: 'Glass Harmonica',
+        star: 'Musical Saw',
+        rocket: 'Waterphone',
+        flower: 'Nyckelharpa',
+        lightning: 'Ondioline',
+    },
+    {
+        cat: 'theremin',
+        frog: 'hurdy_gurdy',
+        panda: 'glass_harmonica',
+        star: 'musical_saw',
+        rocket: 'waterphone',
+        flower: 'nyckelharpa',
+        lightning: 'ondioline',
+    }
+);
 const zoukStamps = seven({ cat: 'Guitar pounce', frog: 'Low sway', panda: 'Panda sway', star: 'Guitar chime', rocket: 'Lead glide', flower: 'Warm bloom', lightning: 'Syncopated hit' });
 const flamencoStamps = seven({ cat: 'Cat · rasgueado', frog: 'Frog · picado', panda: 'Panda · alzapúa', star: 'Star · remate', rocket: 'Rocket · llamada', flower: 'Flower · abanico', lightning: 'Lightning · golpe' }, { cat: 'rasgueado', frog: 'picado', panda: 'alzapua', star: 'remate', rocket: 'llamada', flower: 'abanico', lightning: 'golpe' });
 const tangoStamps = seven({ cat: 'Cat · marcato', frog: 'Frog · síncopa', panda: 'Panda · milonga', star: 'Star · bordoneo', rocket: 'Rocket · arrastre', flower: 'Flower · yumba', lightning: 'Lightning · marcato 2' }, { cat: 'marcato4', frog: 'sincopa', panda: 'milonga', star: 'bordoneo', rocket: 'arrastre', flower: 'yumba', lightning: 'marcato2' });
@@ -79,11 +98,11 @@ export const WORLDS: WorldConfig[] = [
     {
         id: 'weird_cabinet', label: 'Weird Cabinet', tempo: 96, key: 55, scale: MINOR_PENTA, progression: [[0, 3, 7], [5, 10, 0], [7, 0, 3], [0, 5, 10]], totalBeats: 38, relationReach: .064, canvas: '#eeece2', canvasInk: '#242722', accent: '#6e5a8e', stamps: weirdStamps, feel: F(.375, .24, .18, 1.16, [1.05, .93, 1.01, .97, 1.07], .75, 'odd'), studio: { master: .79, room: .24, echo: .31, feedback: .52, release: 1.24, echoBeats: [1, 1.5], lowpass: 3400 }, palette: [
             P('theremin', '#8b5cf6', '#faf5ff', 'melody', 'theremin', 5),
-            P('musical saw', '#06b6d4', '#083344', 'texture', 'musical_saw', 5),
             P('hurdy gurdy', '#ea580c', '#fff3ea', 'bass', 'hurdy_gurdy', 3),
+            P('glass harmonica', '#06b6d4', '#083344', 'harmony', 'glass_harmonica', 5),
+            P('musical saw', '#10b981', '#042e20', 'melody', 'musical_saw', 5),
+            P('waterphone', '#3b82f6', '#eff6ff', 'texture', 'waterphone', 5),
             P('nyckelharpa', '#db2777', '#fff0f7', 'melody', 'nyckelharpa', 4),
-            P('ondioline', '#84cc16', '#243c04', 'harmony', 'ondioline', 4),
-            P('waterphone', '#1e3a8a', '#eff6ff', 'texture', 'waterphone', 5),
         ]
     },
     {

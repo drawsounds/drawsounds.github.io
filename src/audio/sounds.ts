@@ -39,6 +39,7 @@ export const SOUNDS = {
     nyckelharpa: { bank: 'instruments', program: 29 },
     ondioline: { bank: 'instruments', program: 30 },
     musical_saw: { bank: 'instruments', program: 31 },
+    glass_harmonica: { bank: 'instruments', program: 10 },
     pop_kit: { bank: 'percussion', program: 0 },
     world_percussion: { bank: 'percussion', program: 1 },
     rock_kit: { bank: 'percussion', program: 2 },

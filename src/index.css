@@ -703,18 +703,17 @@ button:disabled,input:disabled {
 }
 .world-pill {
   min-width:96px;
-  max-width:130px;
+  max-width:140px;
   height:50px;
   border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);
   border-radius:16px;
   background:color-mix(in srgb,var(--canvas) 70%,white 30%);
-  padding:5px 8px;
-  display:grid;
-  grid-template-columns:auto 1fr;
-  grid-template-rows:1fr;
-  column-gap:6px;
-  text-align:left;
+  padding:5px 10px;
+  display:flex;
   align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
   cursor:pointer;
   box-shadow:0 3px 10px color-mix(in srgb,var(--ink) 7%,transparent)
 }
@@ -723,16 +722,16 @@ button:disabled,input:disabled {
 }
 .world-pill b {
   font-size:11px;
-  align-self:center;
   line-height:1;
+  text-align:center;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap
 }
 .world-dots {
-  grid-row:1;
   display:flex;
-  align-items:center
+  align-items:center;
+  flex-shrink:0
 }
 .world-dots i {
   width:10px;
@@ -769,14 +768,19 @@ button:disabled,input:disabled {
   box-shadow:0 24px 70px rgba(0,0,0,.32)
 }
 .world-sheet-head {
-  display:flex;
+  display:grid;
+  grid-template-columns:40px 1fr 40px;
   align-items:center;
-  justify-content:space-between;
-  margin-bottom:10px
+  margin-bottom:14px
+}
+.world-sheet-spacer {
+  width:40px;
+  height:40px
 }
 .world-sheet-head strong {
-  font-size:24px;
-  letter-spacing:-.04em
+  font-size:22px;
+  letter-spacing:-.03em;
+  text-align:center
 }
 .world-sheet-head button {
   width:40px;
@@ -786,33 +790,53 @@ button:disabled,input:disabled {
   background:#000;
   color:#fff;
   display:grid;
-  place-items:center
+  place-items:center;
+  cursor:pointer;
+  touch-action:manipulation;
+  transition:background .12s ease,border-color .12s ease
+}
+.world-sheet-head button:hover {
+  background:rgba(255,255,255,.1);
+  border-color:rgba(255,255,255,.35)
 }
 .world-grid {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px
+  gap:10px
 }
 .world-card {
   border:1px solid rgba(255,255,255,.18);
   border-radius:18px;
   background:#000;
   color:#fff;
-  min-height:72px;
-  padding:12px;
-  text-align:left;
+  min-height:76px;
+  padding:14px;
+  text-align:center;
   display:flex;
-  align-items:flex-end;
+  align-items:center;
+  justify-content:center;
   cursor:pointer;
   position:relative;
-  overflow:hidden
+  overflow:hidden;
+  transition:border-color .15s ease,background .15s ease,transform .1s ease
+}
+.world-card:hover {
+  background:rgba(255,255,255,.06);
+  border-color:rgba(255,255,255,.36)
+}
+.world-card:active {
+  transform:scale(.97)
 }
 .world-card.active {
-  border-color:#fff
+  border-color:#fff;
+  background:rgba(255,255,255,.12)
 }
 .world-card b {
   font-size:16px;
-  letter-spacing:-.03em
+  letter-spacing:-.02em;
+  text-align:center;
+  display:block;
+  width:100%
 }
 /* World personality */ .world-dreamland .music-paper {
   border-radius:36px;

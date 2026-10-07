@@ -372,7 +372,7 @@ function WorldSheet({ current, onPick, onClose }: {
 }) {
     return <div className="world-sheet-backdrop" onPointerDown={onClose}>
     <section className="world-sheet" onPointerDown={(e: ReactPointerEvent<HTMLElement>) => e.stopPropagation()}>
-      <div className="world-sheet-head"><strong>pick a world</strong><button onClick={onClose} aria-label="Close worlds"><X size={20}/></button></div>
+      <div className="world-sheet-head"><span className="world-sheet-spacer" aria-hidden="true" /><strong>Pick a World</strong><button onClick={onClose} aria-label="Close worlds"><X size={20}/></button></div>
       <div className="world-grid">
         {WORLDS.map(w => <button key={w.id} className={`world-card ${current === w.id ? 'active' : ''}`} onClick={() => onPick(w.id)}>
           <b>{w.label}</b>
